@@ -8,12 +8,15 @@ import {
   ImageIcon,
   Maximize2,
   Sparkles,
-  X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
 import { CanvasToolDock } from "@/components/canvas/CanvasToolDock";
+import {
+  ImageViewerLightbox,
+  type ImageViewerCaptionContext,
+} from "@/components/canvas/ImageViewerLightbox";
 import type { CanvasSceneAdjustments } from "@/lib/canvas/canvas-adjustments";
 import type { IterationVersion } from "@/lib/ai/types";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +55,8 @@ type AdCanvasProps = {
   canUseCanvasTools: boolean;
   /** Vision-estimated scene for the active frame — faded markers on sliders (not live preview on the photo). */
   sceneBaselineFromImage?: CanvasSceneAdjustments | null;
+  /** Passed to AI caption generator in the image viewer */
+  captionContext?: ImageViewerCaptionContext;
   className?: string;
 };
 
@@ -71,9 +76,10 @@ export function AdCanvas({
   canvasApplyLoading,
   canUseCanvasTools,
   sceneBaselineFromImage = null,
+  captionContext,
   className,
 }: AdCanvasProps) {
-  const [productLightbox, setProductLightbox] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const hasProduct = Boolean(productPreviewUrl);
   const isViewingProduct =
@@ -99,6 +105,22 @@ export function AdCanvas({
       : null;
 
   const displayKey = generatedImageUrl ? "generated" : "source";
+
+  const activeImageUrl = useMemo((): string | null => {
+    if (isViewingProduct && productPreviewUrl) return productPreviewUrl;
+    if (showVersionStack && genActiveIndex >= 0) {
+      const v = iterationVersions[genActiveIndex];
+      return v?.imageUrl ?? null;
+    }
+    return displayUrl;
+  }, [
+    isViewingProduct,
+    productPreviewUrl,
+    showVersionStack,
+    genActiveIndex,
+    iterationVersions,
+    displayUrl,
+  ]);
 
   const totalSlots = hasProduct
     ? 1 + iterationVersions.length
@@ -187,7 +209,7 @@ export function AdCanvas({
           {productPreviewUrl ? (
             <button
               type="button"
-              onClick={() => setProductLightbox(true)}
+              onClick={() => setLightboxUrl(productPreviewUrl)}
               className="rounded-md border border-white/15 bg-black/40 p-0.5 shadow-sm transition hover:border-primary/45"
               aria-label="Enlarge product reference"
             >
@@ -203,7 +225,11 @@ export function AdCanvas({
             size="icon"
             variant="ghost"
             className="h-8 w-8"
-            aria-label="Fit view"
+            disabled={!activeImageUrl}
+            aria-label="Enlarge current image"
+            onClick={() => {
+              if (activeImageUrl) setLightboxUrl(activeImageUrl);
+            }}
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -224,7 +250,12 @@ export function AdCanvas({
                 <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
                   <div className="relative min-h-0 flex-1">
                 {isViewingProduct && productPreviewUrl ? (
-                  <div className={previewWrapClass}>
+                  <button
+                    type="button"
+                    className={cn(previewWrapClass, "cursor-zoom-in")}
+                    onClick={() => setLightboxUrl(productPreviewUrl)}
+                    aria-label="Enlarge product image"
+                  >
                     <motion.img
                       key="product-main"
                       src={productPreviewUrl}
@@ -234,7 +265,7 @@ export function AdCanvas({
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.35 }}
                     />
-                  </div>
+                  </button>
                 ) : showVersionStack ? (
                   <div className="relative flex h-full min-h-[240px] w-full items-center justify-center">
                     {visibleVersions.map((v, i) => {
@@ -266,11 +297,12 @@ export function AdCanvas({
                             type="button"
                             onClick={() => {
                               if (!isFront) onSelectIterationVersion(v.id);
+                              else setLightboxUrl(v.imageUrl);
                             }}
                             className={cn(
                               "relative max-h-full max-w-full outline-none transition-[box-shadow] focus-visible:ring-2 focus-visible:ring-primary/50",
                               isFront
-                                ? "cursor-default"
+                                ? "cursor-zoom-in"
                                 : "cursor-pointer rounded-xl hover:ring-2 hover:ring-white/20"
                             )}
                             aria-label={
@@ -304,7 +336,12 @@ export function AdCanvas({
                     })}
                   </div>
                 ) : displayUrl ? (
-                  <div className={previewWrapClass}>
+                  <button
+                    type="button"
+                    className={cn(previewWrapClass, "cursor-zoom-in")}
+                    onClick={() => setLightboxUrl(displayUrl)}
+                    aria-label="Enlarge image"
+                  >
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={displayKey}
@@ -321,7 +358,7 @@ export function AdCanvas({
                         />
                       </motion.div>
                     </AnimatePresence>
-                  </div>
+                  </button>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center text-muted-foreground">
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5">
@@ -440,44 +477,14 @@ export function AdCanvas({
         </div>
       </div>
 
-      <AnimatePresence>
-        {productLightbox && productPreviewUrl ? (
-          <motion.div
-            key="lightbox"
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-6 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setProductLightbox(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Product reference enlarged"
-          >
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="absolute right-4 top-4 h-10 w-10 rounded-full border border-white/10 bg-black/50 text-white hover:bg-black/70"
-              onClick={(e) => {
-                e.stopPropagation();
-                setProductLightbox(false);
-              }}
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-            <motion.img
-              initial={{ scale: 0.94, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.94, opacity: 0 }}
-              src={productPreviewUrl}
-              alt="Product reference"
-              className="max-h-[90vh] max-w-full rounded-lg object-contain shadow-2xl ring-1 ring-white/10"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {lightboxUrl ? (
+        <ImageViewerLightbox
+          key={lightboxUrl}
+          imageUrl={lightboxUrl}
+          onClose={() => setLightboxUrl(null)}
+          captionContext={captionContext}
+        />
+      ) : null}
     </div>
   );
 }

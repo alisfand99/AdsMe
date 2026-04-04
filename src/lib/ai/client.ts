@@ -7,6 +7,8 @@ import type {
   ExpandedPrompt,
   ProductAnalysis,
   RefinementResult,
+  SocialCaptionPlatform,
+  SocialCaptionResult,
   SuggestTaglinesResult,
 } from "./types";
 
@@ -113,4 +115,12 @@ export async function generateAdImage(
     imageDataUrl,
     prompt,
   });
+}
+
+export async function generateSocialCaption(input: {
+  platform: SocialCaptionPlatform;
+  imageDataUrl: string;
+  creativeContext?: AdCreativeContext;
+}): Promise<SocialCaptionResult> {
+  return postJson<SocialCaptionResult>("/api/ai/social-caption", input);
 }

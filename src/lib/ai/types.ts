@@ -70,3 +70,16 @@ export type ComposeCanvasAdjustmentsResult = {
   augmentedPrompt: string;
   adjustmentSummary: string;
 };
+
+export type SocialCaptionPlatform =
+  | "instagram"
+  | "facebook"
+  | "twitter"
+  | "linkedin"
+  | "tiktok";
+
+export type SocialCaptionResult = {
+  caption: string;
+  /** Space-separated tags without leading # */
+  hashtags: string;
+};

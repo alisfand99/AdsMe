@@ -14,9 +14,10 @@ function hasGoogleImageKey(): boolean {
 }
 
 /**
- * When REPLICATE_API_TOKEN is set, Replicate is used for image generation by default.
- * Set ADSME_FORCE_GOOGLE_IMAGE=1 (or IMAGE_GENERATION_BACKEND=google) to keep Google
- * for images when both keys exist.
+ * When REPLICATE_API_TOKEN is set, Replicate is used first.
+ * If Replicate returns 402 / insufficient credit (or similar), we automatically fall
+ * back to Google image generation when a Google API key is configured.
+ * Set ADSME_FORCE_GOOGLE_IMAGE=1 (or IMAGE_GENERATION_BACKEND=google) to skip Replicate entirely.
  */
 function forceGoogleImage(): boolean {
   const v = process.env.ADSME_FORCE_GOOGLE_IMAGE?.trim().toLowerCase();
@@ -64,6 +65,27 @@ function modelUsesProductImage(model: string): boolean {
     m.includes("img2img") ||
     m.includes("ip-adapter")
   );
+}
+
+function replicateHttpStatus(e: unknown): number | undefined {
+  if (!e || typeof e !== "object" || !("response" in e)) return undefined;
+  const r = (e as { response?: { status?: number } }).response;
+  return typeof r?.status === "number" ? r.status : undefined;
+}
+
+/** True when Replicate refused the run due to billing / zero credit — safe to try Google. */
+function isReplicateCreditOrBillingFailure(e: unknown): boolean {
+  if (replicateHttpStatus(e) === 402) return true;
+
+  const msg =
+    e instanceof Error ? e.message : typeof e === "string" ? e : "";
+  const lower = msg.toLowerCase();
+  if (msg.includes("402") || lower.includes("payment required"))
+    return true;
+  if (lower.includes("insufficient credit")) return true;
+  if (lower.includes("purchase credit")) return true;
+  if (lower.includes("account/billing")) return true;
+  return false;
 }
 
 export async function POST(req: Request) {
@@ -115,8 +137,8 @@ export async function POST(req: Request) {
   const replicate = new Replicate({ auth: token! });
 
   try {
+    let url: string;
     if (modelUsesProductImage(model)) {
-      // Data URL string is reliable with Replicate's image inputs (URI / base64).
       const input: Record<string, unknown> = {
         prompt,
         input_image: imageDataUrl.trim(),
@@ -128,23 +150,36 @@ export async function POST(req: Request) {
         model as `${string}/${string}`,
         { input }
       );
-      const url = normalizeReplicateOutput(output);
-      return Response.json({ url });
+      url = normalizeReplicateOutput(output);
+    } else {
+      const input: Record<string, unknown> = {
+        prompt,
+        aspect_ratio: process.env.REPLICATE_SCHNELL_ASPECT?.trim() || "4:5",
+        num_outputs: 1,
+        output_format: "png",
+        go_fast: true,
+      };
+      const output = await replicate.run(model as `${string}/${string}`, {
+        input,
+      });
+      url = normalizeReplicateOutput(output);
     }
-
-    const input: Record<string, unknown> = {
-      prompt,
-      aspect_ratio: process.env.REPLICATE_SCHNELL_ASPECT?.trim() || "4:5",
-      num_outputs: 1,
-      output_format: "png",
-      go_fast: true,
-    };
-    const output = await replicate.run(model as `${string}/${string}`, {
-      input,
-    });
-    const url = normalizeReplicateOutput(output);
     return Response.json({ url });
   } catch (e) {
+    if (googleOk && isReplicateCreditOrBillingFailure(e)) {
+      console.warn(
+        "[api/ai/generate] Replicate credit/billing blocked request; falling back to Google image generation"
+      );
+      try {
+        const url = await generateAdImageWithGoogleTemp(imageDataUrl, prompt);
+        return Response.json({ url });
+      } catch (ge) {
+        const gMsg = ge instanceof Error ? ge.message : "Google generation failed";
+        console.error("[api/ai/generate] fallback google after Replicate billing error", ge);
+        return Response.json({ error: gMsg }, { status: 500 });
+      }
+    }
+
     const message = e instanceof Error ? e.message : "Generation failed";
     console.error("[api/ai/generate]", e);
     return Response.json({ error: message }, { status: 500 });

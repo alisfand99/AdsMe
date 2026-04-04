@@ -478,6 +478,11 @@ export function StudioWorkspace() {
             canvasApplyLoading={canvasApplyLoading}
             canUseCanvasTools={canUseCanvasTools}
             sceneBaselineFromImage={sceneBaselineForTools}
+            captionContext={
+              creativeContext
+                ? { creativeContext }
+                : undefined
+            }
             className="min-h-0 flex-1"
           />
         </div>

@@ -5,6 +5,7 @@ export {
   expandCreativePrompt,
   refineFromChatHistory,
   generateAdImage,
+  generateSocialCaption,
   suggestAdvertisingTaglines,
   composeCanvasAdjustments,
   toImageDataUrl,

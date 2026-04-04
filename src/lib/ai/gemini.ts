@@ -21,6 +21,8 @@ import type {
   ExpandedPrompt,
   ProductAnalysis,
   RefinementResult,
+  SocialCaptionPlatform,
+  SocialCaptionResult,
   SuggestTaglinesResult,
 } from "./types";
 
@@ -192,6 +194,21 @@ const taglinesSchema: ResponseSchema = {
     },
   },
   required: ["taglines"],
+};
+
+const socialCaptionSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    caption: {
+      type: SchemaType.STRING,
+      description: "Main post body for the chosen platform, English unless context demands otherwise",
+    },
+    hashtags: {
+      type: SchemaType.STRING,
+      description: "Space-separated keywords WITHOUT # prefix; 0–12 tags",
+    },
+  },
+  required: ["caption", "hashtags"],
 };
 
 const refinementSchema: ResponseSchema = {
@@ -513,4 +530,77 @@ Each tagline: max ~8 words, punchy, professional, suitable for designed lockup u
     .filter(Boolean)
     .slice(0, 5);
   return { taglines };
+}
+
+const SOCIAL_PLATFORM_GUIDE: Record<SocialCaptionPlatform, string> = {
+  instagram:
+    "Instagram: strong hook in the first line; short paragraphs or line breaks OK; main message under ~900 chars unless product story needs more (hard max ~2200).",
+  facebook:
+    "Facebook: warm, readable tone; one clear message; optional soft CTA; paragraph style OK.",
+  twitter:
+    "X (Twitter): single tweet body only, max ~260 characters including spaces — no thread, no '1/'.",
+  linkedin:
+    "LinkedIn: professional, benefit-led; avoid cringe hustle-speak; 1–3 short paragraphs.",
+  tiktok:
+    "TikTok caption: very short punchy first line; playful; can add one follow-up line; total under ~400 characters preferred.",
+};
+
+export async function generateSocialCaptionWithGemini(input: {
+  platform: SocialCaptionPlatform;
+  imageDataUrl: string;
+  brandName?: string;
+  brandTagline?: string;
+  productSummary?: string;
+  adVisualStyleName?: string;
+}): Promise<SocialCaptionResult> {
+  const { mimeType, base64 } = parseDataUrl(input.imageDataUrl);
+  const model = getModel();
+  const platform = input.platform;
+  const guide = SOCIAL_PLATFORM_GUIDE[platform];
+  const brand = input.brandName?.trim() || "";
+  const tag = input.brandTagline?.trim() || "";
+  const sum = input.productSummary?.trim() || "";
+  const style = input.adVisualStyleName?.trim() || "";
+
+  const text = `You write organic social post copy for a FINISHED static ad / product key visual (image attached).
+
+Target platform: ${platform}
+Platform rules: ${guide}
+
+Context (use only if it fits naturally):
+${brand ? `- Brand: ${brand}` : "- Brand: (not specified)"}
+${tag ? `- Tagline / claim on ad: ${tag}` : ""}
+${sum ? `- Product notes: ${sum}` : ""}
+${style ? `- Campaign visual style label: ${style}` : ""}
+
+Return JSON only with:
+- caption: the post text only (no hashtags inside this string)
+- hashtags: space-separated keywords WITHOUT # (e.g. "skincare minimal design"); 0–12 tags, relevant to the image and platform
+
+Do not invent a fake brand name. If the image shows readable on-image copy, align tone with it. English unless the brief clearly implies another language.`;
+
+  const result = await model.generateContent({
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text },
+          { inlineData: { mimeType, data: base64 } },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.75,
+      responseMimeType: "application/json",
+      responseSchema: socialCaptionSchema,
+    },
+  });
+
+  const parsed = parseJson<{ caption?: string; hashtags?: string }>(
+    result.response.text()
+  );
+  return {
+    caption: String(parsed.caption ?? "").trim(),
+    hashtags: String(parsed.hashtags ?? "").trim(),
+  };
 }
