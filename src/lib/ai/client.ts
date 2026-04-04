@@ -36,11 +36,30 @@ export async function expandCreativePrompt(
 
 export async function refineFromChatHistory(
   history: ChatTurn[],
-  latestUserMessage: string
+  latestUserMessage: string,
+  options?: { currentImagePrompt?: string }
 ): Promise<RefinementResult> {
   return postJson<RefinementResult>("/api/ai/refine", {
     history,
     message: latestUserMessage,
+    currentImagePrompt: options?.currentImagePrompt ?? "",
+  });
+}
+
+/** Ensures a value suitable for /api/ai/generate (data URL). Fetches http(s) if needed. */
+export async function toImageDataUrl(src: string): Promise<string> {
+  const s = src.trim();
+  if (/^data:/i.test(s)) return s;
+  const res = await fetch(s);
+  if (!res.ok) {
+    throw new Error(`Could not load image for iteration (HTTP ${res.status})`);
+  }
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
   });
 }
 

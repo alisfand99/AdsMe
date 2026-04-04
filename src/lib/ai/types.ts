@@ -32,4 +32,14 @@ export type IterationParams = {
 
 export type RefinementResult = IterationParams & {
   reply: string;
+  /** Full English prompt for the next image render (iteration). */
+  imagePrompt: string;
+};
+
+export type IterationVersion = {
+  id: string;
+  label: string;
+  imageUrl: string;
+  promptUsed: string;
+  createdAt: number;
 };

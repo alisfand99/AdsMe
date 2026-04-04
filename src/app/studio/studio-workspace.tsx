@@ -14,8 +14,14 @@ import {
   expandCreativePrompt,
   generateAdImage,
   refineFromChatHistory,
+  toImageDataUrl,
 } from "@/lib/ai";
-import type { ChatTurn, ExpandedPrompt, ProductAnalysis } from "@/lib/ai/types";
+import type {
+  ChatTurn,
+  ExpandedPrompt,
+  IterationVersion,
+  ProductAnalysis,
+} from "@/lib/ai/types";
 
 export function StudioWorkspace() {
   const [productPreviewUrl, setProductPreviewUrl] = useState<string | null>(null);
@@ -34,6 +40,12 @@ export function StudioWorkspace() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [iterationVersions, setIterationVersions] = useState<IterationVersion[]>(
+    []
+  );
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  /** Prompt used for the last successful render (drives refine + version restore). */
+  const [lastImagePrompt, setLastImagePrompt] = useState<string | null>(null);
 
   const selectedDirectionTitle = useMemo(() => {
     if (!analysis || !selectedDirectionId) return null;
@@ -54,6 +66,10 @@ export function StudioWorkspace() {
     setGeneratedImageUrl(null);
     setProductDataUrl(null);
     setGenerateError(null);
+    setChat([]);
+    setIterationVersions([]);
+    setActiveVersionId(null);
+    setLastImagePrompt(null);
     setAnalysisLoading(true);
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -94,6 +110,19 @@ export function StudioWorkspace() {
         expanded.expandedPrompt
       );
       setGeneratedImageUrl(result.url);
+      setLastImagePrompt(expanded.expandedPrompt);
+      const vid = crypto.randomUUID();
+      setIterationVersions((prev) => [
+        ...prev,
+        {
+          id: vid,
+          label: prev.length === 0 ? "Initial" : "Generate",
+          imageUrl: result.url,
+          promptUsed: expanded.expandedPrompt,
+          createdAt: Date.now(),
+        },
+      ]);
+      setActiveVersionId(vid);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Generation failed";
@@ -104,27 +133,95 @@ export function StudioWorkspace() {
     }
   }, [productDataUrl, expanded]);
 
-  const onSendChat = useCallback(async (message: string) => {
-    const userTurn: ChatTurn = {
-      role: "user",
-      content: message,
-      timestamp: Date.now(),
-    };
-    const historyAfterUser: ChatTurn[] = [...chat, userTurn];
-    setChat(historyAfterUser);
-    setChatLoading(true);
-    try {
-      const result = await refineFromChatHistory(historyAfterUser, message);
-      const assistantTurn: ChatTurn = {
-        role: "assistant",
-        content: result.reply,
+  const onSelectIterationVersion = useCallback(
+    (id: string) => {
+      const v = iterationVersions.find((x) => x.id === id);
+      if (!v) return;
+      setActiveVersionId(id);
+      setGeneratedImageUrl(v.imageUrl);
+      setLastImagePrompt(v.promptUsed);
+    },
+    [iterationVersions]
+  );
+
+  const canIterate = Boolean(
+    productDataUrl && expanded?.expandedPrompt?.trim()
+  );
+
+  const onSendChat = useCallback(
+    async (message: string) => {
+      if (!canIterate) return;
+      const userTurn: ChatTurn = {
+        role: "user",
+        content: message,
         timestamp: Date.now(),
       };
-      setChat((c) => [...c, assistantTurn]);
-    } finally {
-      setChatLoading(false);
-    }
-  }, [chat]);
+      const historyAfterUser: ChatTurn[] = [...chat, userTurn];
+      setChat(historyAfterUser);
+      setChatLoading(true);
+      setGenerateError(null);
+      try {
+        const base = expanded?.expandedPrompt?.trim() ?? "";
+        if (!base || !productDataUrl) return;
+        const currentP = lastImagePrompt?.trim() || base;
+        const result = await refineFromChatHistory(historyAfterUser, message, {
+          currentImagePrompt: currentP,
+        });
+
+        const assistantTurn: ChatTurn = {
+          role: "assistant",
+          content: result.reply,
+          timestamp: Date.now(),
+        };
+        setChat((c) => [...c, assistantTurn]);
+
+        const refSrc = generatedImageUrl ?? productDataUrl;
+        const dataUrl = await toImageDataUrl(refSrc);
+
+        setGenerateLoading(true);
+        try {
+          const gen = await generateAdImage(dataUrl, result.imagePrompt);
+          const vid = crypto.randomUUID();
+          const label =
+            message.length > 28
+              ? `${message.slice(0, 25)}…`
+              : message || "Iteration";
+          setIterationVersions((prev) => [
+            ...prev,
+            {
+              id: vid,
+              label,
+              imageUrl: gen.url,
+              promptUsed: result.imagePrompt,
+              createdAt: Date.now(),
+            },
+          ]);
+          setActiveVersionId(vid);
+          setGeneratedImageUrl(gen.url);
+          setLastImagePrompt(result.imagePrompt);
+        } catch (genErr) {
+          const msg =
+            genErr instanceof Error ? genErr.message : "Image render failed";
+          setGenerateError(msg);
+        } finally {
+          setGenerateLoading(false);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Iteration failed";
+        setGenerateError(msg);
+      } finally {
+        setChatLoading(false);
+      }
+    },
+    [
+      canIterate,
+      chat,
+      productDataUrl,
+      expanded,
+      lastImagePrompt,
+      generatedImageUrl,
+    ]
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-foreground">
@@ -179,6 +276,10 @@ export function StudioWorkspace() {
             productDataUrl && expanded?.expandedPrompt?.trim()
           )}
           generateError={generateError}
+          iterationVersions={iterationVersions}
+          activeIterationId={activeVersionId}
+          onSelectIterationVersion={onSelectIterationVersion}
+          canIterate={canIterate}
           chat={chat}
           onSendChat={onSendChat}
           chatLoading={chatLoading}

@@ -10,13 +10,20 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       history?: ChatTurn[];
       message?: string;
+      currentImagePrompt?: string;
     };
     const history = Array.isArray(body.history) ? body.history : [];
     const message = typeof body.message === "string" ? body.message : "";
     if (!message.trim()) {
       return Response.json({ error: "message is required" }, { status: 400 });
     }
-    const result = await refineWithGemini(history, message);
+    const currentImagePrompt =
+      typeof body.currentImagePrompt === "string"
+        ? body.currentImagePrompt
+        : "";
+    const result = await refineWithGemini(history, message, {
+      currentImagePrompt,
+    });
     return Response.json(result);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Refinement failed";

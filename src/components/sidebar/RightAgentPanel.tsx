@@ -4,7 +4,11 @@ import { motion } from "framer-motion";
 import { MessageSquare, SendHorizonal, Sparkles } from "lucide-react";
 import { useState } from "react";
 
-import type { ChatTurn, ExpandedPrompt } from "@/lib/ai/types";
+import type {
+  ChatTurn,
+  ExpandedPrompt,
+  IterationVersion,
+} from "@/lib/ai/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +26,10 @@ type RightAgentPanelProps = {
   generateLoading: boolean;
   canGenerate?: boolean;
   generateError?: string | null;
+  iterationVersions: IterationVersion[];
+  activeIterationId: string | null;
+  onSelectIterationVersion: (id: string) => void;
+  canIterate?: boolean;
   chat: ChatTurn[];
   onSendChat: (message: string) => void;
   chatLoading: boolean;
@@ -38,6 +46,10 @@ export function RightAgentPanel({
   generateLoading,
   canGenerate = true,
   generateError = null,
+  iterationVersions,
+  activeIterationId,
+  onSelectIterationVersion,
+  canIterate = true,
   chat,
   onSendChat,
   chatLoading,
@@ -128,17 +140,50 @@ export function RightAgentPanel({
             <MessageSquare className="h-3.5 w-3.5" />
             Iteration
           </div>
+          {iterationVersions.length > 0 ? (
+            <div className="mb-2">
+              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Versions
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {iterationVersions.map((v, idx) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => onSelectIterationVersion(v.id)}
+                    className={cn(
+                      "flex shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5 text-left transition-colors",
+                      activeIterationId === v.id
+                        ? "border-primary/70 bg-primary/10 ring-1 ring-primary/40"
+                        : "border-white/10 bg-black/30 hover:border-white/20"
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- iteration thumbnails */}
+                    <img
+                      src={v.imageUrl}
+                      alt=""
+                      className="h-11 w-11 rounded object-cover"
+                    />
+                    <span className="max-w-[4.5rem] truncate text-[9px] text-muted-foreground">
+                      {idx + 1}. {v.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <ScrollArea className="min-h-[180px] flex-1 rounded-lg border border-white/10 bg-black/20">
             <div className="space-y-3 p-3">
               {chat.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Try: &quot;Make the lighting warmer&quot; or &quot;Add a
-                  headline&quot; — Gemini refines the brief.
+                  After you generate once, describe changes here — e.g. &quot;Pull
+                  the camera back a bit&quot; — we re-render and save each result
+                  as a version above.
                 </p>
               ) : (
-                chat.map((m) => (
+                chat.map((m, i) => (
                   <div
-                    key={`${m.timestamp}-${m.role}`}
+                    key={`${m.role}-${m.timestamp}-${i}`}
                     className={cn(
                       "rounded-lg px-3 py-2 text-xs",
                       m.role === "user"
@@ -162,7 +207,7 @@ export function RightAgentPanel({
             onSubmit={(e) => {
               e.preventDefault();
               const t = chatInput.trim();
-              if (!t) return;
+              if (!t || !canIterate) return;
               onSendChat(t);
               setChatInput("");
             }}
@@ -170,10 +215,20 @@ export function RightAgentPanel({
             <Input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Refine the shot…"
+              placeholder={
+                canIterate
+                  ? "Change the shot…"
+                  : "Expand prompt first…"
+              }
               className="text-xs"
+              disabled={!canIterate}
             />
-            <Button type="submit" size="icon" variant="glass" disabled={chatLoading}>
+            <Button
+              type="submit"
+              size="icon"
+              variant="glass"
+              disabled={chatLoading || !canIterate}
+            >
               <SendHorizonal className="h-4 w-4" />
             </Button>
           </form>

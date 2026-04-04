@@ -4,4 +4,5 @@ export {
   expandCreativePrompt,
   refineFromChatHistory,
   generateAdImage,
+  toImageDataUrl,
 } from "./client";

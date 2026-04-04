@@ -102,8 +102,13 @@ const refinementSchema: ResponseSchema = {
     lighting: { type: SchemaType.STRING },
     headline: { type: SchemaType.STRING },
     notes: { type: SchemaType.STRING },
+    imagePrompt: {
+      type: SchemaType.STRING,
+      description:
+        "Complete detailed English prompt for the image model for the NEXT render, merging the current prompt with all requested changes.",
+    },
   },
-  required: ["reply", "lighting", "notes"],
+  required: ["reply", "lighting", "notes", "imagePrompt"],
 };
 
 function normalizeAnalysis(raw: ProductAnalysis): ProductAnalysis {
@@ -201,12 +206,17 @@ Return JSON with userIntent (echo), expandedPrompt, negativePrompt.`,
 
 export async function refineWithGemini(
   history: ChatTurn[],
-  latestUserMessage: string
+  latestUserMessage: string,
+  options?: { currentImagePrompt: string }
 ): Promise<RefinementResult> {
   const model = getModel();
   const transcript = history
     .map((t) => `${t.role.toUpperCase()}: ${t.content}`)
     .join("\n");
+
+  const base =
+    options?.currentImagePrompt?.trim() ||
+    "(No prior render prompt — infer from conversation only.)";
 
   const result = await model.generateContent({
     contents: [
@@ -214,16 +224,23 @@ export async function refineWithGemini(
         role: "user",
         parts: [
           {
-            text: `You help refine product ad generations. Conversation so far:
+            text: `You refine product advertisement images. The CURRENT full image-generation prompt (what was used for the latest render) is:
+
+"""
+${base}
+"""
+
+Conversation:
 ${transcript}
 
-Latest user message: ${latestUserMessage}
+Latest user request: ${latestUserMessage}
 
-Reply with JSON:
-- reply: short friendly assistant message (what you will change / suggest)
+You must output JSON:
+- reply: short friendly message confirming what you changed for the user
 - lighting: concise lighting note for the next render
-- headline: short headline idea if they asked for copy; else empty string
-- notes: internal notes for the image pipeline (one sentence)`,
+- headline: short on-image headline if they asked for text; else empty string
+- notes: one internal sentence summarizing the change
+- imagePrompt: ONE complete, detailed English prompt for the NEXT image render. It must incorporate EVERYTHING in the current prompt above PLUS all changes from the conversation (camera distance/angle, background, mood, lighting, composition, text on image, etc.). Standalone — do not say "as before"; be fully specific. Preserve product accuracy and identity.`,
           },
         ],
       },
@@ -240,12 +257,16 @@ Reply with JSON:
     lighting: string;
     headline: string;
     notes: string;
+    imagePrompt: string;
   }>(result.response.text());
+
+  const imagePrompt = (parsed.imagePrompt || base || latestUserMessage).trim();
 
   return {
     reply: parsed.reply || "Updated the creative direction based on your note.",
     lighting: parsed.lighting || "neutral studio",
     headline: parsed.headline?.trim() || undefined,
     notes: parsed.notes || latestUserMessage,
+    imagePrompt,
   };
 }
