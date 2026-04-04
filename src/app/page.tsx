@@ -7,10 +7,10 @@ import {
   MessageSquare,
   Sparkles,
   Wand2,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 
+import { SiteHeaderLogo } from "@/components/brand/SiteHeaderLogo";
 import { HeroMarketingVisual } from "@/components/marketing/HeroMarketingVisual";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -70,14 +70,7 @@ export default function HomePage() {
       </div>
 
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-6 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 backdrop-blur-md">
-            <Zap className="h-4 w-4 text-primary" />
-          </span>
-          <span className="text-sm font-semibold tracking-tight">
-            HeroFrame<span className="text-muted-foreground"> AI</span>
-          </span>
-        </Link>
+        <SiteHeaderLogo />
         <nav className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild className="text-xs">
             <Link href="/studio">Open studio</Link>

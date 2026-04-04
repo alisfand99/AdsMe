@@ -1,14 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
+import { SiteHeaderLogo } from "@/components/brand/SiteHeaderLogo";
 import { AdCanvas } from "@/components/canvas/AdCanvas";
 import { LeftAssetsPanel } from "@/components/sidebar/LeftAssetsPanel";
 import { RightAgentPanel } from "@/components/sidebar/RightAgentPanel";
-import { Button } from "@/components/ui/button";
 import {
   DEFAULT_AD_VISUAL_STYLE_ID,
   getAdVisualStyle,
@@ -440,16 +439,11 @@ export function StudioWorkspace() {
     <div className="flex min-h-screen flex-col bg-zinc-950 text-foreground">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="sm" asChild className="gap-1 text-xs">
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4" />
-              Home
-            </Link>
-          </Button>
+          <SiteHeaderLogo />
           <div className="hidden h-4 w-px bg-white/15 sm:block" />
           <div className="min-w-0">
             <h1 className="text-sm font-semibold tracking-tight max-lg:text-[13px]">
-              HeroFrame Studio
+              Studio
             </h1>
             <p className="text-[11px] text-muted-foreground max-lg:hidden">
               Agentic product ad canvas

@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   },
   description:
     "HeroFrame AI — agentic product ads: vision analysis, creative directions, prompt expansion, and chat iteration on a glassy dark canvas.",
+  icons: {
+    icon: [{ url: "/favicon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({
