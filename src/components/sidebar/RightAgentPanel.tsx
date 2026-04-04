@@ -58,7 +58,7 @@ export function RightAgentPanel({
           <h2 className="text-sm font-semibold tracking-tight">Agent</h2>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Natural language → Gemini expands the prompt → Replicate for pixels.
+          Natural language → Gemini expands the prompt → Google image for pixels.
         </p>
       </div>
 

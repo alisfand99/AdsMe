@@ -191,7 +191,7 @@ export function StudioWorkspace() {
 function BadgePill() {
   return (
     <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground backdrop-blur-md">
-      Beta · Gemini + Replicate
+      Beta · Gemini + Google image
     </div>
   );
 }

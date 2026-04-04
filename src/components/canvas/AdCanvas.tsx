@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element -- blob + Replicate URLs */
+/* eslint-disable @next/next/no-img-element -- blob + data / remote URLs */
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -149,7 +149,7 @@ export function AdCanvas({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Generating with Replicate
+                      Generating image…
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Flux — this can take up to a minute.

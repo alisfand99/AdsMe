@@ -41,7 +41,7 @@ const features = [
   {
     icon: Layers,
     title: "Product-safe generation",
-    body: "Replicate-ready pipeline placeholder: creative backgrounds while preserving product integrity.",
+    body: "Google image pipeline: creative backgrounds while preserving product integrity.",
   },
   {
     icon: MessageSquare,
@@ -231,7 +231,7 @@ export default function HomePage() {
 
       <footer className="relative z-10 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
         <p>AdsMe — Next.js 14, Tailwind, shadcn-style UI, Framer Motion.</p>
-        <p className="mt-1">Gemini (Google AI) for agent logic; Replicate for image generation.</p>
+        <p className="mt-1">Gemini (Google AI) for agent logic and image generation.</p>
       </footer>
     </div>
   );

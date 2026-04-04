@@ -5,17 +5,20 @@ import { generateAdImageWithGoogleTemp } from "@/lib/ai/google-image-gen-temp";
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
-function forceGoogleImageBackend(): boolean {
-  const v = process.env.ADSME_USE_GOOGLE_IMAGE?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
-}
-
 function hasGoogleImageKey(): boolean {
   return Boolean(
     process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
       process.env.GOOGLE_AI_API_KEY?.trim() ||
       process.env.GEMINI_API_KEY?.trim()
   );
+}
+
+/** Replicate is opt-in so a leftover REPLICATE_API_TOKEN (e.g. on Vercel) does not override Google. */
+function optInToReplicate(): boolean {
+  const v = process.env.ADSME_USE_REPLICATE?.trim().toLowerCase();
+  if (v === "1" || v === "true" || v === "yes") return true;
+  const backend = process.env.IMAGE_GENERATION_BACKEND?.trim().toLowerCase();
+  return backend === "replicate";
 }
 
 /** Default keeps the uploaded product in frame; set REPLICATE_MODEL=black-forest-labs/flux-schnell for faster text-only. */
@@ -87,16 +90,16 @@ export async function POST(req: Request) {
   }
 
   const token = process.env.REPLICATE_API_TOKEN?.trim();
-  const useReplicate = Boolean(token) && !forceGoogleImageBackend();
+  const googleOk = hasGoogleImageKey();
+  const useReplicate =
+    Boolean(token) && (optInToReplicate() || !googleOk);
 
   if (!useReplicate) {
-    if (!hasGoogleImageKey()) {
+    if (!googleOk) {
       return Response.json(
         {
           error:
-            forceGoogleImageBackend()
-              ? "ADSME_USE_GOOGLE_IMAGE is set but no Google API key is configured"
-              : "Configure REPLICATE_API_TOKEN or Google API key (GOOGLE_GENERATIVE_AI_API_KEY) for image generation",
+            "Set GOOGLE_GENERATIVE_AI_API_KEY (Google AI Studio) for image generation, or add REPLICATE_API_TOKEN if you are not using Google.",
         },
         { status: 500 }
       );
