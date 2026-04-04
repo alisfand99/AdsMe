@@ -1,7 +1,5 @@
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const productLinks = [
@@ -43,12 +41,6 @@ export function SiteFooter({ className }: { className?: string }) {
               Product-first ad layouts, agent-assisted briefs, and iteration
               you can ship — built for teams who care how the frame looks.
             </p>
-            <Button size="sm" className="mt-6 gap-1.5 rounded-full" asChild>
-              <Link href="/studio">
-                Start creating
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-              </Link>
-            </Button>
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:gap-10 lg:col-span-4">
@@ -88,19 +80,14 @@ export function SiteFooter({ className }: { className?: string }) {
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-6 rounded-xl border border-white/10 bg-white/[0.02] p-5 sm:col-span-2 lg:col-span-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Ready when you are
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Open the studio, drop a product shot, and iterate with the agent
-                on your timeline.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
-              <Link href="/studio">Launch studio</Link>
-            </Button>
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 sm:col-span-2 lg:col-span-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Ready when you are
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Open the studio, drop a product shot, and iterate with the agent
+              on your timeline.
+            </p>
           </div>
         </div>
 
