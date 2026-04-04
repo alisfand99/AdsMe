@@ -1,4 +1,5 @@
 import { suggestTaglinesWithGemini } from "@/lib/ai/gemini";
+import { imageDataUrlTooLarge } from "@/lib/security/payload-limits";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -18,11 +19,15 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    const optionalImage =
+      typeof body.imageDataUrl === "string" ? body.imageDataUrl : undefined;
+    if (optionalImage && imageDataUrlTooLarge(optionalImage)) {
+      return Response.json({ error: "Image payload too large" }, { status: 413 });
+    }
     const result = await suggestTaglinesWithGemini({
       productSummary,
       brandName: body.brandName,
-      imageDataUrl:
-        typeof body.imageDataUrl === "string" ? body.imageDataUrl : undefined,
+      imageDataUrl: optionalImage,
     });
     return Response.json(result);
   } catch (e) {

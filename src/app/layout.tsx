@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 
+import { DeveloperConsoleWatermark } from "@/components/brand/DeveloperConsoleWatermark";
+
 import "./globals.css";
 
 const geistSans = localFont({
@@ -24,6 +26,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/favicon.png", type: "image/png" }],
   },
+  authors: [{ name: "Ali Esfandyari" }],
 };
 
 export default function RootLayout({
@@ -36,6 +39,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
       >
+        <DeveloperConsoleWatermark />
         {children}
       </body>
     </html>

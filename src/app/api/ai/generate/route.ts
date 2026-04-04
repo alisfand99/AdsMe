@@ -1,6 +1,7 @@
 import Replicate from "replicate";
 
 import { generateAdImageWithGoogleTemp } from "@/lib/ai/google-image-gen-temp";
+import { imageDataUrlTooLarge } from "@/lib/security/payload-limits";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
@@ -100,6 +101,9 @@ export async function POST(req: Request) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!imageDataUrl || typeof imageDataUrl !== "string") {
     return Response.json({ error: "imageDataUrl is required" }, { status: 400 });
+  }
+  if (imageDataUrlTooLarge(imageDataUrl)) {
+    return Response.json({ error: "Image payload too large" }, { status: 413 });
   }
   if (!prompt) {
     return Response.json({ error: "prompt is required" }, { status: 400 });

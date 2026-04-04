@@ -15,8 +15,6 @@ const legalLinks = [
 ] as const;
 
 export function SiteFooter({ className }: { className?: string }) {
-  const year = new Date().getFullYear();
-
   return (
     <footer
       className={cn(
@@ -92,9 +90,7 @@ export function SiteFooter({ className }: { className?: string }) {
         </div>
 
         <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © {year} HeroFrame AI. All rights reserved.
-          </p>
+          <p>© 2026 HeroFrame AI. Architected by Ali Esfandyari.</p>
           <p className="sm:text-right">
             Stack &amp; integrations detailed on{" "}
             <Link href="/about" className="text-foreground/80 underline-offset-4 transition hover:text-primary hover:underline">

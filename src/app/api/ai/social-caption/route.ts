@@ -1,5 +1,6 @@
 import { parseAdCreativeContext } from "@/lib/ad/creative-context";
 import { generateSocialCaptionWithGemini } from "@/lib/ai/gemini";
+import { imageDataUrlTooLarge } from "@/lib/security/payload-limits";
 
 import type { SocialCaptionPlatform } from "@/lib/ai/types";
 
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
         { error: "imageDataUrl (data URL) is required" },
         { status: 400 }
       );
+    }
+    if (imageDataUrlTooLarge(imageDataUrl)) {
+      return Response.json({ error: "Image payload too large" }, { status: 413 });
     }
 
     const ctx = parseAdCreativeContext(body.creativeContext);
