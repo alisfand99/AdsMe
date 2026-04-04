@@ -1,3 +1,5 @@
+import type { CanvasSceneAdjustments } from "@/lib/canvas/canvas-adjustments";
+
 export type CreativeDirection = {
   id: string;
   title: string;
@@ -42,4 +44,29 @@ export type IterationVersion = {
   imageUrl: string;
   promptUsed: string;
   createdAt: number;
+  /** Vision model estimate of camera / light / framing for this frame (slider baseline markers). */
+  inferredScene?: CanvasSceneAdjustments | null;
+};
+
+/** Passed expand/refine APIs — commercial ad focus + brand + style. */
+export type AdCreativeContext = {
+  adVisualStyleId: string;
+  adVisualStyleName: string;
+  adVisualStyleGuidance: string;
+  brandName: string;
+  brandTagline: string;
+  typographyStyleId: string;
+  typographyStyleLabel: string;
+  typographyPromptHint: string;
+  selectedCreativeDirection?: string;
+  productSummary?: string;
+};
+
+export type SuggestTaglinesResult = {
+  taglines: string[];
+};
+
+export type ComposeCanvasAdjustmentsResult = {
+  augmentedPrompt: string;
+  adjustmentSummary: string;
 };

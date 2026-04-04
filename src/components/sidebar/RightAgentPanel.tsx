@@ -1,14 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { MessageSquare, SendHorizonal, Sparkles } from "lucide-react";
+import { MessageSquare, SendHorizonal, Sparkles, Wand2 } from "lucide-react";
 import { useState } from "react";
 
-import type {
-  ChatTurn,
-  ExpandedPrompt,
-  IterationVersion,
-} from "@/lib/ai/types";
+import { AD_TYPOGRAPHY_STYLES } from "@/lib/ad/typography-styles";
+import type { ChatTurn, IterationVersion } from "@/lib/ai/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,15 +13,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type RightAgentPanelProps = {
+  brandName: string;
+  brandTagline: string;
+  typographyStyleId: string;
+  onBrandNameChange: (v: string) => void;
+  onBrandTaglineChange: (v: string) => void;
+  onTypographyStyleChange: (id: string) => void;
+  onSuggestTaglines: () => void;
+  suggestTaglinesLoading: boolean;
+  canSuggestTaglines: boolean;
+  taglineSuggestions: string[] | null;
+  onPickTaglineSuggestion: (line: string) => void;
   prompt: string;
   onPromptChange: (v: string) => void;
   onExpand: () => void;
   expandLoading: boolean;
-  expanded: ExpandedPrompt | null;
   onGenerate: () => void;
   generateLoading: boolean;
   canGenerate?: boolean;
   generateError?: string | null;
+  productPreviewUrl: string | null;
+  productSourceVersionId: string;
   iterationVersions: IterationVersion[];
   activeIterationId: string | null;
   onSelectIterationVersion: (id: string) => void;
@@ -37,15 +45,27 @@ type RightAgentPanelProps = {
 };
 
 export function RightAgentPanel({
+  brandName,
+  brandTagline,
+  typographyStyleId,
+  onBrandNameChange,
+  onBrandTaglineChange,
+  onTypographyStyleChange,
+  onSuggestTaglines,
+  suggestTaglinesLoading,
+  canSuggestTaglines,
+  taglineSuggestions,
+  onPickTaglineSuggestion,
   prompt,
   onPromptChange,
   onExpand,
   expandLoading,
-  expanded,
   onGenerate,
   generateLoading,
   canGenerate = true,
   generateError = null,
+  productPreviewUrl,
+  productSourceVersionId,
   iterationVersions,
   activeIterationId,
   onSelectIterationVersion,
@@ -70,20 +90,95 @@ export function RightAgentPanel({
           <h2 className="text-sm font-semibold tracking-tight">Agent</h2>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Natural language → Gemini expands the prompt → Google image for pixels.
+          Commercial poster prompts — brand lockups, designed type, campaign polish.
         </p>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="space-y-3 p-4">
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Brand identity
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground">
+                Brand name
+              </label>
+              <Input
+                value={brandName}
+                onChange={(e) => onBrandNameChange(e.target.value)}
+                placeholder="e.g. Lumen & Co."
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[11px] text-muted-foreground">
+                  Tagline / claim
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-[10px]"
+                  disabled={!canSuggestTaglines || suggestTaglinesLoading}
+                  onClick={onSuggestTaglines}
+                >
+                  <Wand2 className="h-3 w-3" />
+                  {suggestTaglinesLoading ? "…" : "Suggest"}
+                </Button>
+              </div>
+              <Textarea
+                value={brandTagline}
+                onChange={(e) => onBrandTaglineChange(e.target.value)}
+                placeholder="Short line for the poster lockup"
+                className="min-h-[52px] text-xs"
+              />
+              {taglineSuggestions?.length ? (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {taglineSuggestions.map((line) => (
+                    <button
+                      key={line}
+                      type="button"
+                      onClick={() => onPickTaglineSuggestion(line)}
+                      className="max-w-full rounded-md border border-white/15 bg-white/5 px-2 py-1 text-left text-[10px] leading-snug text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground"
+                    >
+                      {line}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground">
+                Typography / lettering style
+              </label>
+              <select
+                value={typographyStyleId}
+                onChange={(e) => onTypographyStyleChange(e.target.value)}
+                className="flex h-8 w-full rounded-md border border-white/10 bg-zinc-950/80 px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                {AD_TYPOGRAPHY_STYLES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                Controls how on-image headlines and taglines are described to the
+                image model — art-directed, not plain text.
+              </p>
+            </div>
+          </div>
+
           <label className="text-xs font-medium text-muted-foreground">
             Creative brief
           </label>
           <Textarea
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
-            placeholder='e.g. "make it look luxury"'
-            className="min-h-[88px] text-sm"
+            placeholder='Short brief, or Expand to fill a full ad prompt'
+            className="min-h-[100px] max-h-[220px] resize-y text-sm"
           />
           <div className="flex gap-2">
             <Button
@@ -109,6 +204,10 @@ export function RightAgentPanel({
               {generateLoading ? "Working…" : "Generate"}
             </Button>
           </div>
+          <p className="text-[10px] leading-snug text-muted-foreground">
+            Expand replaces this text with a long ad-ready prompt. Edit it, then
+            Generate — or change brand/style and Expand again.
+          </p>
           {generateError ? (
             <p
               className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] leading-snug text-destructive"
@@ -116,20 +215,6 @@ export function RightAgentPanel({
             >
               {generateError}
             </p>
-          ) : null}
-          {expanded ? (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="rounded-lg border border-white/10 bg-black/25 p-3 text-xs"
-            >
-              <p className="font-mono text-[10px] uppercase tracking-wider text-primary">
-                Expanded prompt
-              </p>
-              <p className="mt-2 leading-relaxed text-muted-foreground">
-                {expanded.expandedPrompt}
-              </p>
-            </motion.div>
           ) : null}
         </div>
 
@@ -140,12 +225,36 @@ export function RightAgentPanel({
             <MessageSquare className="h-3.5 w-3.5" />
             Iteration
           </div>
-          {iterationVersions.length > 0 ? (
+          {productPreviewUrl || iterationVersions.length > 0 ? (
             <div className="mb-2">
               <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 Versions
               </p>
               <div className="flex gap-2 overflow-x-auto pb-1">
+                {productPreviewUrl ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSelectIterationVersion(productSourceVersionId)
+                    }
+                    className={cn(
+                      "flex shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5 text-left transition-colors",
+                      activeIterationId === productSourceVersionId
+                        ? "border-primary/70 bg-primary/10 ring-1 ring-primary/40"
+                        : "border-white/10 bg-black/30 hover:border-white/20"
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={productPreviewUrl}
+                      alt=""
+                      className="h-11 w-11 rounded object-cover"
+                    />
+                    <span className="max-w-[4.5rem] truncate text-[9px] text-muted-foreground">
+                      1. Product
+                    </span>
+                  </button>
+                ) : null}
                 {iterationVersions.map((v, idx) => (
                   <button
                     key={v.id}
@@ -165,7 +274,7 @@ export function RightAgentPanel({
                       className="h-11 w-11 rounded object-cover"
                     />
                     <span className="max-w-[4.5rem] truncate text-[9px] text-muted-foreground">
-                      {idx + 1}. {v.label}
+                      {idx + (productPreviewUrl ? 2 : 1)}. {v.label}
                     </span>
                   </button>
                 ))}
@@ -216,9 +325,7 @@ export function RightAgentPanel({
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder={
-                canIterate
-                  ? "Change the shot…"
-                  : "Expand prompt first…"
+                canIterate ? "Change the shot…" : "Add a brief first…"
               }
               className="text-xs"
               disabled={!canIterate}

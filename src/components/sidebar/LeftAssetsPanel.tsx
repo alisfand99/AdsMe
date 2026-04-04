@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Upload, Wand2 } from "lucide-react";
 
+import { AD_VISUAL_STYLES } from "@/lib/ad/ad-visual-styles";
 import type { CreativeDirection, ProductAnalysis } from "@/lib/ai/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ type LeftAssetsPanelProps = {
   onFileSelect: (file: File) => void;
   analysis: ProductAnalysis | null;
   analysisLoading: boolean;
+  selectedAdStyleId: string;
+  onSelectAdStyle: (id: string) => void;
   selectedDirectionId: string | null;
   onSelectDirection: (id: string) => void;
   className?: string;
@@ -24,6 +27,8 @@ export function LeftAssetsPanel({
   onFileSelect,
   analysis,
   analysisLoading,
+  selectedAdStyleId,
+  onSelectAdStyle,
   selectedDirectionId,
   onSelectDirection,
   className,
@@ -41,7 +46,7 @@ export function LeftAssetsPanel({
           <h2 className="text-sm font-semibold tracking-tight">Assets</h2>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Agentic upload analyzes your product automatically.
+          Upload, pick an ad visual style, then brief the agent.
         </p>
       </div>
 
@@ -70,6 +75,49 @@ export function LeftAssetsPanel({
               </span>
             </motion.div>
           </label>
+
+          <Separator className="bg-white/10" />
+
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Ad visual style
+            </h3>
+            <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+              Each tile shows the kind of campaign look we optimize for.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {AD_VISUAL_STYLES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onSelectAdStyle(s.id)}
+                  className={cn(
+                    "overflow-hidden rounded-lg border text-left transition-colors",
+                    selectedAdStyleId === s.id
+                      ? "border-primary/70 bg-primary/10 ring-1 ring-primary/35"
+                      : "border-white/10 bg-black/20 hover:border-white/25"
+                  )}
+                >
+                  <div className="relative aspect-[4/5] w-full bg-zinc-900">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- static mood SVGs */}
+                    <img
+                      src={s.imageSrc}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="p-2">
+                    <p className="text-[11px] font-medium leading-tight text-foreground">
+                      {s.name}
+                    </p>
+                    <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground line-clamp-2">
+                      {s.blurb}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <Separator className="bg-white/10" />
 

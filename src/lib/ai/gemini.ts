@@ -7,12 +7,50 @@ import {
   type ResponseSchema,
 } from "@google/generative-ai";
 
+import type { CanvasSceneAdjustments } from "@/lib/canvas/canvas-adjustments";
+import { clampCanvasSceneAdjustments } from "@/lib/canvas/canvas-adjustments";
+import {
+  buildPhotographicSceneEditPrompt,
+  summarizeSceneDelta,
+} from "@/lib/canvas/scene-to-photographic-english";
+
 import type {
+  AdCreativeContext,
   ChatTurn,
+  ComposeCanvasAdjustmentsResult,
   ExpandedPrompt,
   ProductAnalysis,
   RefinementResult,
+  SuggestTaglinesResult,
 } from "./types";
+
+const AD_POSTER_PREAMBLE = `This is for professional commercial advertising: print posters, OOH, paid social statics, and e-commerce hero campaigns — NOT casual influencer content, phone selfies, or unstyled UGC.
+
+The image must feel art-directed: clear hierarchy (product hero + headline/tagline zones), intentional negative space, color grading suited to paid media, and typography on image that looks designed by a creative team (custom lockup, proper scale, optical kerning) — never plain default fonts or sticker-like text.
+
+Avoid: blogger bedroom aesthetics, messy backgrounds, snapshot framing, watermarks, UI mockups, stock-photo cliché without art direction.`;
+
+function formatCreativeContextBlock(ctx: AdCreativeContext | undefined): string {
+  if (!ctx) return "";
+  const brandBlock =
+    ctx.brandName.trim() || ctx.brandTagline.trim()
+      ? `- Brand name (render on-image if appropriate): ${ctx.brandName.trim() || "(not specified — omit or use subtle generic mark only)"}
+- Brand tagline / claim (render as designed ad copy if provided): ${ctx.brandTagline.trim() || "(none — do not invent a fake brand sentence unless brief implies it)"}`
+      : `- Brand name: (not specified)
+- Tagline: (not specified)`;
+
+  return `
+SELECTED AD VISUAL STYLE: "${ctx.adVisualStyleName}"
+${ctx.adVisualStyleGuidance}
+
+TYPOGRAPHY / LETTERING STYLE (for any on-image words): "${ctx.typographyStyleLabel}"
+${ctx.typographyPromptHint}
+
+${brandBlock}
+${ctx.selectedCreativeDirection ? `- Creative direction brief: ${ctx.selectedCreativeDirection}` : ""}
+${ctx.productSummary ? `- Product context: ${ctx.productSummary}` : ""}
+`.trim();
+}
 
 function apiKey(): string {
   const k =
@@ -95,6 +133,67 @@ const expandedPromptSchema: ResponseSchema = {
   required: ["userIntent", "expandedPrompt"],
 };
 
+/** Same numeric fields as CanvasSceneAdjustments — vision → structured controls. */
+const sceneInferenceSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    framingZoom: {
+      type: SchemaType.NUMBER,
+      description:
+        "1 = neutral hero tightness; <1 wider FOV / camera farther; >1 tighter crop.",
+    },
+    orbitYawDeg: {
+      type: SchemaType.NUMBER,
+      description:
+        "Horizontal camera orbit around product: negative = camera toward subject's right side; positive = toward subject's left.",
+    },
+    orbitPitchDeg: {
+      type: SchemaType.NUMBER,
+      description:
+        "Camera height: negative = lower / looking slightly up at hero; positive = higher / looking down.",
+    },
+    subjectRollDeg: {
+      type: SchemaType.NUMBER,
+      description:
+        "Product rotation in the image plane (Z), degrees; 0 = upright vs frame.",
+    },
+    lightAzimuthDeg: {
+      type: SchemaType.NUMBER,
+      description:
+        "Key light azimuth 0–360: 0° = from camera-right of set; 90° = from behind camera toward subject; 180° = camera-left; 270° = toward camera.",
+    },
+    lightElevationDeg: {
+      type: SchemaType.NUMBER,
+      description: "Key light elevation above horizon in degrees (about 8–82).",
+    },
+    lightHardness: {
+      type: SchemaType.NUMBER,
+      description: "0 = very soft wrap; 1 = hard shadow edges.",
+    },
+  },
+  required: [
+    "framingZoom",
+    "orbitYawDeg",
+    "orbitPitchDeg",
+    "subjectRollDeg",
+    "lightAzimuthDeg",
+    "lightElevationDeg",
+    "lightHardness",
+  ],
+};
+
+const taglinesSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    taglines: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+      description: "3–5 short advertising taglines, English, campaign-ready",
+    },
+  },
+  required: ["taglines"],
+};
+
 const refinementSchema: ResponseSchema = {
   type: SchemaType.OBJECT,
   properties: {
@@ -142,13 +241,13 @@ export async function analyzeProductWithGemini(
   const { mimeType, base64 } = parseDataUrl(imageDataUrl);
   const model = getModel();
 
-  const prompt = `You are a senior commercial art director. Look at this product photo.
+  const prompt = `You are a senior commercial art director for paid advertising (print, OOH, social statics). Look at this product photo.
 Return JSON only (schema enforced). Infer:
 - category (short retail category)
 - dominantColors: 3–6 color names
 - materialGuess: likely materials/finish for the product/packaging
-- suggestedDirections: exactly 3 distinct ad creative directions (title, one-line description, 2–4 styleTags each).
-Use ids "1","2","3". Titles must be evocative (e.g. minimalist marble, neon cyberpunk, tropical beach).`;
+- suggestedDirections: exactly 3 distinct directions for a professional AD CAMPAIGN key visual — not casual lifestyle blogging. Each: title, one-line description, 2–4 styleTags (e.g. shelf-impact, editorial-luxury, tech-launch).
+Use ids "1","2","3". Titles must sound like campaign routes (e.g. "Marble flagship", "Neon night market").`;
 
   const result = await model.generateContent({
     contents: [
@@ -172,20 +271,78 @@ Use ids "1","2","3". Titles must be evocative (e.g. minimalist marble, neon cybe
   return normalizeAnalysis(parsed);
 }
 
+/**
+ * Estimates structured scene parameters from a finished ad render so sliders can show
+ * a "current frame" baseline (faded markers) and compose can compute deltas.
+ */
+export async function inferCanvasSceneFromImageWithGemini(
+  imageDataUrl: string
+): Promise<CanvasSceneAdjustments> {
+  const { mimeType, base64 } = parseDataUrl(imageDataUrl);
+  const model = getModel();
+
+  const text = `You are a technical cinematographer analyzing a SINGLE finished advertising key visual.
+
+Infer the scene as NUMERICAL controls matching this exact coordinate system (output JSON only):
+
+- framingZoom: 1.0 = typical hero product framing for this genre; lower if camera feels farther / more environment; higher if very tight crop on product.
+- orbitYawDeg: horizontal angle of the CAMERA around the product. 0 = head-on / symmetric; negative = camera shifted toward the product's RIGHT side (we see more product left cheek); positive = camera shifted toward product LEFT.
+- orbitPitchDeg: 0 = lens near product mid-height; negative = camera lower (looking up at product); positive = camera higher (looking down).
+- subjectRollDeg: rotation of the product in the picture plane (tilt), degrees. 0 = product vertical edges parallel to frame (modulo perspective).
+- lightAzimuthDeg: dominant KEY light, 0–360. 0° = light from camera-RIGHT side of set; 90° = from behind camera toward subject; 180° = from camera-LEFT; 270° = toward camera / front fill side.
+- lightElevationDeg: key light elevation (8 = very low/grazing; 82 = almost overhead).
+- lightHardness: shadow edge hardness 0 (ultra soft) to 1 (hard).
+
+Use the IMAGE only. Best estimate — these values drive a 3D gizmo and must be internally consistent.`;
+
+  const result = await model.generateContent({
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text },
+          { inlineData: { mimeType, data: base64 } },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.35,
+      responseMimeType: "application/json",
+      responseSchema: sceneInferenceSchema,
+    },
+  });
+
+  const parsed = parseJson<Record<string, unknown>>(result.response.text());
+  return clampCanvasSceneAdjustments(parsed);
+}
+
 export async function expandPromptWithGemini(
-  shortPrompt: string
+  shortPrompt: string,
+  creativeContext?: AdCreativeContext
 ): Promise<ExpandedPrompt> {
   const trimmed = shortPrompt.trim() || "premium product hero";
   const model = getModel();
+  const ctxBlock = formatCreativeContextBlock(creativeContext);
   const result = await model.generateContent({
     contents: [
       {
         role: "user",
         parts: [
           {
-            text: `User brief for a product ad image: "${trimmed}"
-Expand into a single detailed English prompt for an image model. Preserve product accuracy; describe background, lighting, mood, camera, and composition. Also suggest a concise negativePrompt string (comma-separated tokens).
-Return JSON with userIntent (echo), expandedPrompt, negativePrompt.`,
+            text: `${AD_POSTER_PREAMBLE}
+
+User creative brief: "${trimmed}"
+
+${ctxBlock ? `LOCKED CREATIVE INPUTS:\n${ctxBlock}\n` : ""}
+
+Expand into ONE detailed English prompt for an image generation model. Requirements:
+- Describe a single advertising key visual: camera/lens feel, lighting for print reproduction, set design, color grade, product hero treatment, and where headline/tagline/brand lockup sit (if brand or tagline provided, specify exact professional treatment — emboss, neon sign, foil block, integrated signage, etc.).
+- Merge the user's brief with the selected visual style and typography direction.
+- Preserve product identity and accuracy; no wrong product category.
+
+Also suggest negativePrompt: comma-separated tokens excluding blogger/UGC/snapshot/watermark/amateur text.
+
+Return JSON: userIntent (echo), expandedPrompt, negativePrompt.`,
           },
         ],
       },
@@ -207,16 +364,24 @@ Return JSON with userIntent (echo), expandedPrompt, negativePrompt.`,
 export async function refineWithGemini(
   history: ChatTurn[],
   latestUserMessage: string,
-  options?: { currentImagePrompt: string }
+  options?: {
+    currentImagePrompt?: string;
+    creativeContext?: AdCreativeContext;
+  }
 ): Promise<RefinementResult> {
   const model = getModel();
   const transcript = history
     .map((t) => `${t.role.toUpperCase()}: ${t.content}`)
     .join("\n");
 
-  const base =
-    options?.currentImagePrompt?.trim() ||
-    "(No prior render prompt — infer from conversation only.)";
+  const baseRaw = options?.currentImagePrompt?.trim() || "";
+  const baseForModel =
+    baseRaw.length > 800
+      ? `${baseRaw.slice(0, 800)}\n… [truncated — the reference image shows the full current ad; do not reproduce this block in imagePrompt.]`
+      : baseRaw ||
+        "(No prior edit log — infer only from conversation + reference image.)";
+
+  const ctxBlock = formatCreativeContextBlock(options?.creativeContext);
 
   const result = await model.generateContent({
     contents: [
@@ -224,23 +389,29 @@ export async function refineWithGemini(
         role: "user",
         parts: [
           {
-            text: `You refine product advertisement images. The CURRENT full image-generation prompt (what was used for the latest render) is:
+            text: `${AD_POSTER_PREAMBLE}
+
+You refine professional ADVERTISING / POSTER key visuals (not casual photos).
+
+PRIOR EDIT / PROMPT LOG (context only — may include long text from an older step). The image-to-image model receives the CURRENT FRAME as pixels. Your JSON field imagePrompt must be DELTA-ONLY: never paste this entire block or repeat luxury/OOH boilerplate.
 
 """
-${base}
+${baseForModel}
 """
+
+${ctxBlock ? `BRAND & STYLE CONSTRAINTS (keep consistent unless user explicitly overrides):\n${ctxBlock}\n` : ""}
 
 Conversation:
 ${transcript}
 
 Latest user request: ${latestUserMessage}
 
-You must output JSON:
-- reply: short friendly message confirming what you changed for the user
-- lighting: concise lighting note for the next render
-- headline: short on-image headline if they asked for text; else empty string
-- notes: one internal sentence summarizing the change
-- imagePrompt: ONE complete, detailed English prompt for the NEXT image render. It must incorporate EVERYTHING in the current prompt above PLUS all changes from the conversation (camera distance/angle, background, mood, lighting, composition, text on image, etc.). Standalone — do not say "as before"; be fully specific. Preserve product accuracy and identity.`,
+Output JSON:
+- reply: short friendly confirmation
+- lighting: concise note for next render
+- headline: on-image headline if relevant; else empty
+- notes: one internal sentence
+- imagePrompt: ONLY incremental edit instructions for the image-to-image model (the reference frame carries the full ad). Do NOT paste the luxury/editorial style bible, long OOH/print paragraphs, or the full prior iteration prompt. Start with one short line that the reference image is the ground truth, then list ONLY what must change (camera, light, framing, copy tweaks the user asked for) in clear imperative sentences. If the user asked for typography/headline changes, state those briefly. Max ~800 characters unless they requested many edits. No blogger/UGC look.`,
           },
         ],
       },
@@ -260,7 +431,10 @@ You must output JSON:
     imagePrompt: string;
   }>(result.response.text());
 
-  const imagePrompt = (parsed.imagePrompt || base || latestUserMessage).trim();
+  const imagePrompt = (
+    parsed.imagePrompt?.trim() ||
+    `Use the reference image as the full visual base. Apply only: ${latestUserMessage}`
+  ).trim();
 
   return {
     reply: parsed.reply || "Updated the creative direction based on your note.",
@@ -269,4 +443,74 @@ You must output JSON:
     notes: parsed.notes || latestUserMessage,
     imagePrompt,
   };
+}
+
+export async function composeCanvasAdjustmentsWithGemini(input: {
+  /** Ignored — scene compose is delta-only; reference image holds the ad. */
+  currentImagePrompt?: string;
+  adjustments: CanvasSceneAdjustments;
+  /** Vision-derived estimate of the reference frame; when set, describe before → after in plain photographic language. */
+  baselineScene?: CanvasSceneAdjustments | null;
+  creativeContext?: AdCreativeContext;
+}): Promise<ComposeCanvasAdjustmentsResult> {
+  const target = clampCanvasSceneAdjustments(input.adjustments);
+  const baselineRaw = input.baselineScene;
+  const baseline =
+    baselineRaw != null ? clampCanvasSceneAdjustments(baselineRaw) : null;
+
+  return {
+    augmentedPrompt: buildPhotographicSceneEditPrompt(
+      baseline,
+      target,
+      input.creativeContext
+    ).trim(),
+    adjustmentSummary: summarizeSceneDelta(baseline, target).trim(),
+  };
+}
+
+export async function suggestTaglinesWithGemini(input: {
+  productSummary: string;
+  brandName?: string;
+  imageDataUrl?: string;
+}): Promise<SuggestTaglinesResult> {
+  const model = getModel();
+  const brand =
+    typeof input.brandName === "string" ? input.brandName.trim() : "";
+  const summary = input.productSummary.trim() || "General consumer product";
+
+  const textIntro = `You write short advertising taglines for posters and paid social statics.
+Product / market context:
+${summary}
+${brand ? `Brand name to align with: ${brand}` : "No brand name — lines should work as generic claims or invite adding a name later."}
+
+Return JSON only: { "taglines": string[] } with 3–5 options.
+Each tagline: max ~8 words, punchy, professional, suitable for designed lockup under a logo — not cheesy rhymes unless brief fits. English only.`;
+
+  const parts: Array<
+    { text: string } | { inlineData: { mimeType: string; data: string } }
+  > = [{ text: textIntro }];
+
+  if (input.imageDataUrl?.trim()) {
+    const { mimeType, base64 } = parseDataUrl(input.imageDataUrl);
+    parts.push({
+      text: "Use the product photo to match tone and category:",
+    });
+    parts.push({ inlineData: { mimeType, data: base64 } });
+  }
+
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts }],
+    generationConfig: {
+      temperature: 0.85,
+      responseMimeType: "application/json",
+      responseSchema: taglinesSchema,
+    },
+  });
+
+  const parsed = parseJson<{ taglines: string[] }>(result.response.text());
+  const taglines = (parsed.taglines ?? [])
+    .map((t) => String(t).trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  return { taglines };
 }

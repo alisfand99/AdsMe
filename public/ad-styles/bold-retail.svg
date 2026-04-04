@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="250" viewBox="0 0 200 250">
+  <rect width="200" height="250" fill="#e63946"/>
+  <rect x="0" y="0" width="200" height="72" fill="#1d3557"/>
+  <text x="100" y="46" text-anchor="middle" fill="#fff" font-family="Arial Black,sans-serif" font-size="22" font-weight="900">SALE</text>
+  <rect x="30" y="88" width="140" height="100" fill="#fff" rx="6"/>
+  <text x="100" y="228" text-anchor="middle" fill="#1d3557" font-family="Arial Black,sans-serif" font-size="10">NEW</text>
+</svg>

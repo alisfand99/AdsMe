@@ -13,26 +13,20 @@ function hasGoogleImageKey(): boolean {
   );
 }
 
-/** Replicate is opt-in so a leftover REPLICATE_API_TOKEN (e.g. on Vercel) does not override Google. */
-function optInToReplicate(): boolean {
-  const v = process.env.ADSME_USE_REPLICATE?.trim().toLowerCase();
+/**
+ * When REPLICATE_API_TOKEN is set, Replicate is used for image generation by default.
+ * Set ADSME_FORCE_GOOGLE_IMAGE=1 (or IMAGE_GENERATION_BACKEND=google) to keep Google
+ * for images when both keys exist.
+ */
+function forceGoogleImage(): boolean {
+  const v = process.env.ADSME_FORCE_GOOGLE_IMAGE?.trim().toLowerCase();
   if (v === "1" || v === "true" || v === "yes") return true;
   const backend = process.env.IMAGE_GENERATION_BACKEND?.trim().toLowerCase();
-  return backend === "replicate";
+  return backend === "google";
 }
 
 /** Default keeps the uploaded product in frame; set REPLICATE_MODEL=black-forest-labs/flux-schnell for faster text-only. */
 const DEFAULT_MODEL = "black-forest-labs/flux-kontext-max";
-
-function dataUrlToBuffer(dataUrl: string): Buffer {
-  const m = /^data:([^;]+);base64,(.+)$/i.exec(dataUrl.trim());
-  if (!m?.[2]) {
-    throw new Error(
-      "Invalid image data URL (need data:image/...;base64,... — not a blob: URL)"
-    );
-  }
-  return Buffer.from(m[2], "base64");
-}
 
 function normalizeReplicateOutput(output: unknown): string {
   if (output == null) {
@@ -91,15 +85,14 @@ export async function POST(req: Request) {
 
   const token = process.env.REPLICATE_API_TOKEN?.trim();
   const googleOk = hasGoogleImageKey();
-  const useReplicate =
-    Boolean(token) && (optInToReplicate() || !googleOk);
+  const useReplicate = Boolean(token) && !forceGoogleImage();
 
   if (!useReplicate) {
     if (!googleOk) {
       return Response.json(
         {
           error:
-            "Set GOOGLE_GENERATIVE_AI_API_KEY (Google AI Studio) for image generation, or add REPLICATE_API_TOKEN if you are not using Google.",
+            "Add REPLICATE_API_TOKEN for image generation (recommended), or set GOOGLE_GENERATIVE_AI_API_KEY for Google image output.",
         },
         { status: 500 }
       );
@@ -123,10 +116,10 @@ export async function POST(req: Request) {
 
   try {
     if (modelUsesProductImage(model)) {
-      const imageBuffer = dataUrlToBuffer(imageDataUrl);
+      // Data URL string is reliable with Replicate's image inputs (URI / base64).
       const input: Record<string, unknown> = {
         prompt,
-        input_image: imageBuffer,
+        input_image: imageDataUrl.trim(),
         aspect_ratio:
           process.env.REPLICATE_KONTEXT_ASPECT?.trim() || "match_input_image",
         output_format: "png",

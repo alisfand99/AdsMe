@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="250" viewBox="0 0 200 250">
+  <defs><linearGradient id="t" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#0a1628"/><stop offset="100%" style="stop-color:#1a2744"/></linearGradient></defs>
+  <rect width="200" height="250" fill="url(#t)"/>
+  <rect x="30" y="60" width="140" height="100" fill="none" stroke="#00f5ff" stroke-width="1" opacity="0.8"/>
+  <path d="M30 160 L100 120 L170 160" fill="none" stroke="#7c3aed" stroke-width="1.2" opacity="0.7"/>
+  <text x="100" y="210" text-anchor="middle" fill="#00f5ff" font-family="monospace" font-size="9" letter-spacing="0.15em">TECH</text>
+</svg>

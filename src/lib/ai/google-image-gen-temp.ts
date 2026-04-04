@@ -82,7 +82,7 @@ export async function generateAdImageWithGoogleTemp(
 
   const userPrompt = `${prompt}
 
-Constraints: This is a product advertisement. Use the attached image as the product reference — preserve the product's identity, shape, branding, and key colors. Create a polished commercial hero shot; professional lighting and background suitable for ads.`;
+Constraints: Professional advertising key visual or poster — not casual UGC. Use the attached image as the product reference; preserve identity, shape, branding, and key colors. If the prompt specifies on-image brand name, tagline, or headline, render them as art-directed typography (designed lockup, proper hierarchy, print-ready), never plain default-font stickers. Polished commercial lighting and set suitable for paid media.`;
 
   const imageConfig = {
     aspectRatio:

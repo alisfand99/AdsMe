@@ -1,8 +1,13 @@
+import type { CanvasSceneAdjustments } from "@/lib/canvas/canvas-adjustments";
+
 import type {
+  AdCreativeContext,
   ChatTurn,
+  ComposeCanvasAdjustmentsResult,
   ExpandedPrompt,
   ProductAnalysis,
   RefinementResult,
+  SuggestTaglinesResult,
 } from "./types";
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -27,23 +32,58 @@ export async function analyzeProductImage(
 }
 
 export async function expandCreativePrompt(
-  shortPrompt: string
+  shortPrompt: string,
+  creativeContext?: AdCreativeContext
 ): Promise<ExpandedPrompt> {
   return postJson<ExpandedPrompt>("/api/ai/expand-prompt", {
     prompt: shortPrompt,
+    creativeContext,
   });
 }
 
 export async function refineFromChatHistory(
   history: ChatTurn[],
   latestUserMessage: string,
-  options?: { currentImagePrompt?: string }
+  options?: {
+    currentImagePrompt?: string;
+    creativeContext?: AdCreativeContext;
+  }
 ): Promise<RefinementResult> {
   return postJson<RefinementResult>("/api/ai/refine", {
     history,
     message: latestUserMessage,
     currentImagePrompt: options?.currentImagePrompt ?? "",
+    creativeContext: options?.creativeContext,
   });
+}
+
+export async function suggestAdvertisingTaglines(input: {
+  productSummary: string;
+  brandName?: string;
+  imageDataUrl?: string;
+}): Promise<SuggestTaglinesResult> {
+  return postJson<SuggestTaglinesResult>("/api/ai/suggest-tagline", input);
+}
+
+export async function composeCanvasAdjustments(input: {
+  currentImagePrompt: string;
+  adjustments: CanvasSceneAdjustments;
+  baselineScene?: CanvasSceneAdjustments | null;
+  creativeContext?: AdCreativeContext;
+}): Promise<ComposeCanvasAdjustmentsResult> {
+  return postJson<ComposeCanvasAdjustmentsResult>(
+    "/api/ai/compose-canvas-adjustments",
+    input
+  );
+}
+
+export async function analyzeSceneFromImage(input: {
+  imageDataUrl: string;
+}): Promise<{ adjustments: CanvasSceneAdjustments }> {
+  return postJson<{ adjustments: CanvasSceneAdjustments }>(
+    "/api/ai/analyze-scene-from-image",
+    input
+  );
 }
 
 /** Ensures a value suitable for /api/ai/generate (data URL). Fetches http(s) if needed. */

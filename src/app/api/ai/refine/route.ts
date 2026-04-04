@@ -1,3 +1,4 @@
+import { parseAdCreativeContext } from "@/lib/ad/creative-context";
 import { refineWithGemini } from "@/lib/ai/gemini";
 
 import type { ChatTurn } from "@/lib/ai/types";
@@ -11,6 +12,7 @@ export async function POST(req: Request) {
       history?: ChatTurn[];
       message?: string;
       currentImagePrompt?: string;
+      creativeContext?: unknown;
     };
     const history = Array.isArray(body.history) ? body.history : [];
     const message = typeof body.message === "string" ? body.message : "";
@@ -21,8 +23,10 @@ export async function POST(req: Request) {
       typeof body.currentImagePrompt === "string"
         ? body.currentImagePrompt
         : "";
+    const creativeContext = parseAdCreativeContext(body.creativeContext);
     const result = await refineWithGemini(history, message, {
       currentImagePrompt,
+      creativeContext,
     });
     return Response.json(result);
   } catch (e) {
