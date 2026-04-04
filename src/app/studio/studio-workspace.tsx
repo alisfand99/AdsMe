@@ -6,6 +6,10 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { SiteHeaderLogo } from "@/components/brand/SiteHeaderLogo";
 import { AdCanvas } from "@/components/canvas/AdCanvas";
+import {
+  StudioMobileBottomNav,
+  type StudioMobileTab,
+} from "@/components/studio/StudioMobileBottomNav";
 import { LeftAssetsPanel } from "@/components/sidebar/LeftAssetsPanel";
 import { RightAgentPanel } from "@/components/sidebar/RightAgentPanel";
 import {
@@ -32,6 +36,7 @@ import {
 } from "@/lib/canvas/canvas-adjustments";
 import type { ChatTurn, IterationVersion, ProductAnalysis } from "@/lib/ai/types";
 import { PRODUCT_SOURCE_VERSION_ID } from "@/lib/studio/constants";
+import { cn } from "@/lib/utils";
 
 export function StudioWorkspace() {
   const [productPreviewUrl, setProductPreviewUrl] = useState<string | null>(null);
@@ -84,6 +89,7 @@ export function StudioWorkspace() {
     DEFAULT_CANVAS_ADJUSTMENTS
   );
   const [canvasApplyLoading, setCanvasApplyLoading] = useState(false);
+  const [mobileTab, setMobileTab] = useState<StudioMobileTab>("canvas");
   const activeVersionIdRef = useRef<string | null>(null);
   useEffect(() => {
     activeVersionIdRef.current = activeVersionId;
@@ -197,6 +203,19 @@ export function StudioWorkspace() {
     }
   }, []);
 
+  const onFileSelectWithMobileNav = useCallback(
+    async (file: File) => {
+      await onFileSelect(file);
+      if (
+        typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 1023px)").matches
+      ) {
+        setMobileTab("canvas");
+      }
+    },
+    [onFileSelect]
+  );
+
   const onExpand = useCallback(async () => {
     setExpandLoading(true);
     setGenerateError(null);
@@ -211,6 +230,12 @@ export function StudioWorkspace() {
   const onGenerate = useCallback(async () => {
     const p = prompt.trim();
     if (!productDataUrl || !p) return;
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      setMobileTab("canvas");
+    }
     setGenerateLoading(true);
     setGenerateError(null);
     try {
@@ -249,6 +274,12 @@ export function StudioWorkspace() {
 
   const onApplyCanvasRender = useCallback(async () => {
     if (!iterationRenderPrompt?.trim() || iterationVersions.length === 0) return;
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      setMobileTab("canvas");
+    }
     setCanvasApplyLoading(true);
     setGenerateError(null);
     try {
@@ -457,26 +488,31 @@ export function StudioWorkspace() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35 }}
-        className={`flex min-h-0 min-h-[calc(100vh-3.5rem)] flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3 sm:gap-4 sm:p-4 lg:flex-row max-lg:gap-2 max-lg:p-2 ${
-          imageApiDebug && imageApiDebugOpen
-            ? "pb-[min(38vh,380px)] max-lg:pb-[min(32vh,300px)]"
-            : ""
-        }`}
+        className={cn(
+          "flex min-h-0 min-h-[calc(100vh-3.5rem)] flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3 sm:gap-4 sm:p-4 lg:flex-row max-lg:gap-2 max-lg:p-2",
+          "max-lg:pb-[calc(6.25rem+env(safe-area-inset-bottom,0px))]",
+          imageApiDebug &&
+            imageApiDebugOpen &&
+            "pb-[min(38vh,380px)] max-lg:pb-[max(min(38vh,380px),calc(6.25rem+env(safe-area-inset-bottom,0px)))]"
+        )}
       >
         <LeftAssetsPanel
           variant="upload-only"
-          onFileSelect={onFileSelect}
+          onFileSelect={onFileSelectWithMobileNav}
           analysis={analysis}
           analysisLoading={analysisLoading}
           selectedAdStyleId={selectedAdStyleId}
           onSelectAdStyle={setSelectedAdStyleId}
           selectedDirectionId={selectedDirectionId}
           onSelectDirection={setSelectedDirectionId}
-          className="order-1 lg:hidden"
+          className={cn(
+            "order-1 lg:hidden",
+            mobileTab !== "assets" && "max-lg:hidden"
+          )}
         />
         <LeftAssetsPanel
           variant="full"
-          onFileSelect={onFileSelect}
+          onFileSelect={onFileSelectWithMobileNav}
           analysis={analysis}
           analysisLoading={analysisLoading}
           selectedAdStyleId={selectedAdStyleId}
@@ -487,7 +523,10 @@ export function StudioWorkspace() {
         />
         <div
           ref={canvasColumnRef}
-          className="order-2 flex min-h-0 flex-1 flex-col max-lg:min-h-0 lg:sticky lg:top-3 lg:z-20 lg:max-h-none lg:min-h-[min(480px,70dvh)] lg:self-start lg:overflow-visible"
+          className={cn(
+            "order-2 flex min-h-0 flex-1 flex-col max-lg:min-h-0 lg:sticky lg:top-3 lg:z-20 lg:max-h-none lg:min-h-[min(480px,70dvh)] lg:self-start lg:overflow-visible",
+            mobileTab !== "canvas" && "max-lg:hidden"
+          )}
         >
           <AdCanvas
             productPreviewUrl={productPreviewUrl}
@@ -510,20 +549,23 @@ export function StudioWorkspace() {
                 ? { creativeContext }
                 : undefined
             }
-            onFileSelect={onFileSelect}
+            onFileSelect={onFileSelectWithMobileNav}
             className="min-h-0 flex-1 max-lg:min-h-[280px]"
           />
         </div>
         <LeftAssetsPanel
           variant="creative-only"
-          onFileSelect={onFileSelect}
+          onFileSelect={onFileSelectWithMobileNav}
           analysis={analysis}
           analysisLoading={analysisLoading}
           selectedAdStyleId={selectedAdStyleId}
           onSelectAdStyle={setSelectedAdStyleId}
           selectedDirectionId={selectedDirectionId}
           onSelectDirection={setSelectedDirectionId}
-          className="order-3 lg:hidden"
+          className={cn(
+            "order-3 lg:hidden",
+            mobileTab !== "assets" && "max-lg:hidden"
+          )}
         />
         <RightAgentPanel
           brandName={brandName}
@@ -557,9 +599,20 @@ export function StudioWorkspace() {
           chat={chat}
           onSendChat={onSendChat}
           chatLoading={chatLoading}
-          className="order-4 lg:order-none"
+          className={cn(
+            "order-4 max-lg:min-h-0 max-lg:flex-1 lg:order-none",
+            mobileTab !== "agent" && "max-lg:hidden"
+          )}
         />
       </motion.main>
+
+      <StudioMobileBottomNav
+        active={mobileTab}
+        onTabChange={setMobileTab}
+        onPhotoCapture={(file) => {
+          void onFileSelectWithMobileNav(file);
+        }}
+      />
 
       {imageApiDebug ? (
         <div className="fixed inset-x-0 bottom-0 z-[400] border-t border-violet-500/25 bg-zinc-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md">

@@ -12,6 +12,8 @@ import Link from "next/link";
 
 import { SiteHeaderLogo } from "@/components/brand/SiteHeaderLogo";
 import { HeroMarketingVisual } from "@/components/marketing/HeroMarketingVisual";
+import { PreFooterCta } from "@/components/marketing/PreFooterCta";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -72,9 +74,6 @@ export default function HomePage() {
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-6 sm:px-6">
         <SiteHeaderLogo />
         <nav className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild className="text-xs">
-            <Link href="/studio">Open studio</Link>
-          </Button>
           <Button size="sm" className="text-xs gap-1" asChild>
             <Link href="/studio">
               Start creating
@@ -160,12 +159,9 @@ export default function HomePage() {
           <HeroMarketingVisual />
         </motion.div>
 
-        <Separator
-          id="features"
-          className="my-20 bg-gradient-to-r from-transparent via-white/15 to-transparent"
-        />
+        <Separator className="my-20 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
 
-        <section className="mx-auto max-w-5xl">
+        <section id="features" className="mx-auto max-w-5xl scroll-mt-24">
           <h2 className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Product pillars
           </h2>
@@ -193,17 +189,11 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        <PreFooterCta />
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
-        <p>
-          HeroFrame AI — Next.js 14, Tailwind, shadcn-style UI, Framer Motion.
-        </p>
-        <p className="mt-1">
-          Gemini (Google AI) for agent logic; optional Replicate / Google for
-          images.
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
