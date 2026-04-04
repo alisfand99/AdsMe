@@ -1,7 +1,22 @@
 import Replicate from "replicate";
 
+import { generateAdImageWithGoogleTemp } from "@/lib/ai/google-image-gen-temp";
+
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
+
+function forceGoogleImageBackend(): boolean {
+  const v = process.env.ADSME_USE_GOOGLE_IMAGE?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+function hasGoogleImageKey(): boolean {
+  return Boolean(
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
+      process.env.GOOGLE_AI_API_KEY?.trim() ||
+      process.env.GEMINI_API_KEY?.trim()
+  );
+}
 
 /** Default keeps the uploaded product in frame; set REPLICATE_MODEL=black-forest-labs/flux-schnell for faster text-only. */
 const DEFAULT_MODEL = "black-forest-labs/flux-kontext-max";
@@ -55,14 +70,6 @@ function modelUsesProductImage(model: string): boolean {
 }
 
 export async function POST(req: Request) {
-  const token = process.env.REPLICATE_API_TOKEN?.trim();
-  if (!token) {
-    return Response.json(
-      { error: "REPLICATE_API_TOKEN is not configured" },
-      { status: 500 }
-    );
-  }
-
   let body: { imageDataUrl?: string; prompt?: string };
   try {
     body = (await req.json()) as { imageDataUrl?: string; prompt?: string };
@@ -79,12 +86,37 @@ export async function POST(req: Request) {
     return Response.json({ error: "prompt is required" }, { status: 400 });
   }
 
+  const token = process.env.REPLICATE_API_TOKEN?.trim();
+  const useReplicate = Boolean(token) && !forceGoogleImageBackend();
+
+  if (!useReplicate) {
+    if (!hasGoogleImageKey()) {
+      return Response.json(
+        {
+          error:
+            forceGoogleImageBackend()
+              ? "ADSME_USE_GOOGLE_IMAGE is set but no Google API key is configured"
+              : "Configure REPLICATE_API_TOKEN or Google API key (GOOGLE_GENERATIVE_AI_API_KEY) for image generation",
+        },
+        { status: 500 }
+      );
+    }
+    try {
+      const url = await generateAdImageWithGoogleTemp(imageDataUrl, prompt);
+      return Response.json({ url });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Generation failed";
+      console.error("[api/ai/generate] google temp", e);
+      return Response.json({ error: message }, { status: 500 });
+    }
+  }
+
   const model =
     process.env.REPLICATE_MODEL?.trim() ||
     process.env.REPLICATE_GENERATE_MODEL?.trim() ||
     DEFAULT_MODEL;
 
-  const replicate = new Replicate({ auth: token });
+  const replicate = new Replicate({ auth: token! });
 
   try {
     if (modelUsesProductImage(model)) {

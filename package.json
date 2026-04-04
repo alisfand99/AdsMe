@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:apis": "node scripts/test-apis.mjs"
+    "test:apis": "node scripts/test-apis.mjs",
+    "temp:google-image": "node scripts/temp-google-image-gen.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
