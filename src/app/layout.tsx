@@ -16,11 +16,11 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "AdsMe — AI Product Ad Studio",
-    template: "%s | AdsMe",
+    default: "HeroFrame AI — Product Ad Studio",
+    template: "%s | HeroFrame AI",
   },
   description:
-    "Agentic AI product advertisement studio — canvas editor, vision analysis, and creative iteration.",
+    "HeroFrame AI — agentic product ads: vision analysis, creative directions, prompt expansion, and chat iteration on a glassy dark canvas.",
 };
 
 export default function RootLayout({

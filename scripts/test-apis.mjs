@@ -115,7 +115,7 @@ async function testReplicate() {
 }
 
 async function main() {
-  console.log("AdsMe API smoke test (keys are not printed)\n");
+  console.log("HeroFrame AI API smoke test (keys are not printed)\n");
   console.log(
     `Env files: .env.local ${envLocal?.loaded ? `found (${envLocal.assignments} assignments)` : "missing"}${envLocal?.loaded && envLocal.keysSet?.length ? ` — keys: ${envLocal.keysSet.join(", ")}` : ""} | .env ${envDefault?.loaded ? `found (${envDefault.assignments} assignments)` : "missing"}`
   );

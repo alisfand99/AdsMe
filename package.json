@@ -1,5 +1,5 @@
 {
-  "name": "adsme",
+  "name": "heroframe-ai",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:apis": "node scripts/test-apis.mjs",
-    "temp:google-image": "node scripts/temp-google-image-gen.mjs"
+    "temp:google-image": "node scripts/temp-google-image-gen.mjs",
+    "hero:image": "node scripts/generate-hero-marketing.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

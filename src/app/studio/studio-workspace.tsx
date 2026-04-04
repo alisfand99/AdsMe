@@ -449,7 +449,7 @@ export function StudioWorkspace() {
           <div className="hidden h-4 w-px bg-white/15 sm:block" />
           <div className="min-w-0">
             <h1 className="text-sm font-semibold tracking-tight max-lg:text-[13px]">
-              AdsMe Studio
+              HeroFrame Studio
             </h1>
             <p className="text-[11px] text-muted-foreground max-lg:hidden">
               Agentic product ad canvas
@@ -608,7 +608,7 @@ export function StudioWorkspace() {
 function BadgePill() {
   return (
     <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-muted-foreground backdrop-blur-md sm:px-3 sm:py-1 sm:text-[10px] sm:tracking-widest max-lg:max-w-[9rem] max-lg:truncate lg:max-w-none">
-      Beta · Gemini + Replicate image
+      Beta · HeroFrame AI
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { HeroMarketingVisual } from "@/components/marketing/HeroMarketingVisual";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -73,7 +74,9 @@ export default function HomePage() {
           <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 backdrop-blur-md">
             <Zap className="h-4 w-4 text-primary" />
           </span>
-          <span className="text-sm font-semibold tracking-tight">AdsMe</span>
+          <span className="text-sm font-semibold tracking-tight">
+            HeroFrame<span className="text-muted-foreground"> AI</span>
+          </span>
         </Link>
         <nav className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild className="text-xs">
@@ -102,7 +105,7 @@ export default function HomePage() {
             className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground backdrop-blur-md"
           >
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            AI Product Ad Creative Studio
+            AI product ad studio
           </motion.p>
           <motion.h1
             custom={1}
@@ -111,9 +114,9 @@ export default function HomePage() {
             animate="show"
             className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl"
           >
-            Canvas-first ads that{" "}
+            Product in frame.{" "}
             <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-200 bg-clip-text text-transparent">
-              feel like Flair
+              Campaign in flow
             </span>
             .
           </motion.h1>
@@ -124,8 +127,8 @@ export default function HomePage() {
             animate="show"
             className="mx-auto mt-6 max-w-xl text-balance text-sm leading-relaxed text-muted-foreground sm:text-base"
           >
-            Upload a product, let the agent propose directions, expand prompts, and
-            iterate in chat — polished dark UI, glass panels, and motion throughout.
+            Less prompt-hacking, more art direction: structured controls,
+            iteration history, and outputs tuned for commercial layouts.
           </motion.p>
           <motion.div
             custom={3}
@@ -161,37 +164,7 @@ export default function HomePage() {
           }}
           className="mx-auto mt-20 max-w-4xl"
         >
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40 shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-              <span className="ml-3 font-mono text-[10px] text-muted-foreground">
-                adsme / studio — preview
-              </span>
-            </div>
-            <div className="grid gap-0 md:grid-cols-[1fr_1.4fr_1fr]">
-              <div className="hidden border-r border-white/10 p-4 md:block">
-                <div className="mb-3 h-3 w-20 rounded shimmer-bg" />
-                <div className="space-y-2">
-                  <div className="h-16 rounded-lg border border-white/10 bg-white/[0.03]" />
-                  <div className="h-14 rounded-lg border border-white/10 bg-white/[0.03]" />
-                  <div className="h-14 rounded-lg border border-white/10 bg-white/[0.03]" />
-                </div>
-              </div>
-              <div className="flex min-h-[280px] items-center justify-center border-white/10 p-8 md:border-r">
-                <div className="relative aspect-[4/5] w-full max-w-[200px] rounded-xl border border-white/15 bg-gradient-to-br from-zinc-800 to-zinc-950 shadow-xl">
-                  <div className="absolute inset-4 rounded-lg border border-dashed border-white/20" />
-                  <Sparkles className="absolute bottom-4 right-4 h-5 w-5 text-primary/80" />
-                </div>
-              </div>
-              <div className="hidden p-4 md:block">
-                <div className="mb-3 h-3 w-24 rounded shimmer-bg" />
-                <div className="h-24 rounded-lg border border-white/10 bg-white/[0.03]" />
-                <div className="mt-2 h-20 rounded-lg border border-white/10 bg-white/[0.03]" />
-              </div>
-            </div>
-          </div>
+          <HeroMarketingVisual />
         </motion.div>
 
         <Separator
@@ -230,8 +203,13 @@ export default function HomePage() {
       </main>
 
       <footer className="relative z-10 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
-        <p>AdsMe — Next.js 14, Tailwind, shadcn-style UI, Framer Motion.</p>
-        <p className="mt-1">Gemini (Google AI) for agent logic and image generation.</p>
+        <p>
+          HeroFrame AI — Next.js 14, Tailwind, shadcn-style UI, Framer Motion.
+        </p>
+        <p className="mt-1">
+          Gemini (Google AI) for agent logic; optional Replicate / Google for
+          images.
+        </p>
       </footer>
     </div>
   );

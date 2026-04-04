@@ -99,7 +99,7 @@ export function ImageViewerLightbox({
     setExportingMime(mime);
     try {
       const blob = await exportImageBlob(imageUrl, mime);
-      triggerDownload(blob, `adsme-creative-${Date.now()}.${ext}`);
+      triggerDownload(blob, `heroframe-creative-${Date.now()}.${ext}`);
     } catch (e) {
       setDownloadErr(
         e instanceof Error ? e.message : "Download failed — try another format."
@@ -146,12 +146,12 @@ export function ImageViewerLightbox({
     try {
       const blob = await resolveImageBlob(imageUrl);
       const type = blob.type && blob.type.startsWith("image/") ? blob.type : "image/png";
-      const file = new File([blob], `adsme-ad.${type.split("/")[1] || "png"}`, {
+      const file = new File([blob], `heroframe-ad.${type.split("/")[1] || "png"}`, {
         type,
       });
       const payload: ShareData = {
         title: "Ad creative",
-        text: combinedForShare || "Creative from AdsMe Studio",
+        text: combinedForShare || "Creative from HeroFrame AI",
       };
       if (navigator.canShare?.({ ...payload, files: [file] })) {
         await navigator.share({ ...payload, files: [file] });
