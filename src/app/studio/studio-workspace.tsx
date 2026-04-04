@@ -421,10 +421,25 @@ export function StudioWorkspace() {
     return v?.inferredScene ?? null;
   }, [activeVersionId, iterationVersions]);
 
+  const canvasColumnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!generateLoading) return;
+    const w = typeof window !== "undefined" ? window : null;
+    if (!w || !w.matchMedia("(max-width: 1023px)").matches) return;
+    const id = w.requestAnimationFrame(() => {
+      canvasColumnRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => w.cancelAnimationFrame(id);
+  }, [generateLoading]);
+
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-foreground">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
-        <div className="flex items-center gap-3">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Button variant="ghost" size="sm" asChild className="gap-1 text-xs">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
@@ -432,9 +447,11 @@ export function StudioWorkspace() {
             </Link>
           </Button>
           <div className="hidden h-4 w-px bg-white/15 sm:block" />
-          <div>
-            <h1 className="text-sm font-semibold tracking-tight">AdsMe Studio</h1>
-            <p className="text-[11px] text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold tracking-tight max-lg:text-[13px]">
+              AdsMe Studio
+            </h1>
+            <p className="text-[11px] text-muted-foreground max-lg:hidden">
               Agentic product ad canvas
             </p>
           </div>
@@ -446,13 +463,14 @@ export function StudioWorkspace() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35 }}
-        className={`flex min-h-0 min-h-[calc(100vh-3.5rem)] flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3 lg:flex-row sm:gap-4 sm:p-4 ${
+        className={`flex min-h-0 min-h-[calc(100vh-3.5rem)] flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3 sm:gap-4 sm:p-4 lg:flex-row max-lg:gap-2 max-lg:p-2 ${
           imageApiDebug && imageApiDebugOpen
-            ? "pb-[min(38vh,380px)]"
+            ? "pb-[min(38vh,380px)] max-lg:pb-[min(32vh,300px)]"
             : ""
         }`}
       >
         <LeftAssetsPanel
+          variant="upload-only"
           onFileSelect={onFileSelect}
           analysis={analysis}
           analysisLoading={analysisLoading}
@@ -460,8 +478,23 @@ export function StudioWorkspace() {
           onSelectAdStyle={setSelectedAdStyleId}
           selectedDirectionId={selectedDirectionId}
           onSelectDirection={setSelectedDirectionId}
+          className="order-1 lg:hidden"
         />
-        <div className="flex min-h-[min(480px,70dvh)] flex-1 flex-col lg:sticky lg:top-3 lg:z-20 lg:max-h-none lg:self-start lg:overflow-visible">
+        <LeftAssetsPanel
+          variant="full"
+          onFileSelect={onFileSelect}
+          analysis={analysis}
+          analysisLoading={analysisLoading}
+          selectedAdStyleId={selectedAdStyleId}
+          onSelectAdStyle={setSelectedAdStyleId}
+          selectedDirectionId={selectedDirectionId}
+          onSelectDirection={setSelectedDirectionId}
+          className="hidden lg:order-none lg:flex lg:w-[280px] lg:shrink-0"
+        />
+        <div
+          ref={canvasColumnRef}
+          className="order-2 flex min-h-0 flex-1 flex-col max-lg:min-h-0 lg:sticky lg:top-3 lg:z-20 lg:max-h-none lg:min-h-[min(480px,70dvh)] lg:self-start lg:overflow-visible"
+        >
           <AdCanvas
             productPreviewUrl={productPreviewUrl}
             generatedImageUrl={generatedImageUrl}
@@ -483,9 +516,20 @@ export function StudioWorkspace() {
                 ? { creativeContext }
                 : undefined
             }
-            className="min-h-0 flex-1"
+            className="min-h-0 flex-1 max-lg:min-h-[280px]"
           />
         </div>
+        <LeftAssetsPanel
+          variant="creative-only"
+          onFileSelect={onFileSelect}
+          analysis={analysis}
+          analysisLoading={analysisLoading}
+          selectedAdStyleId={selectedAdStyleId}
+          onSelectAdStyle={setSelectedAdStyleId}
+          selectedDirectionId={selectedDirectionId}
+          onSelectDirection={setSelectedDirectionId}
+          className="order-3 lg:hidden"
+        />
         <RightAgentPanel
           brandName={brandName}
           brandTagline={brandTagline}
@@ -518,6 +562,7 @@ export function StudioWorkspace() {
           chat={chat}
           onSendChat={onSendChat}
           chatLoading={chatLoading}
+          className="order-4 lg:order-none"
         />
       </motion.main>
 
@@ -561,7 +606,7 @@ export function StudioWorkspace() {
 
 function BadgePill() {
   return (
-    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground backdrop-blur-md">
+    <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-muted-foreground backdrop-blur-md sm:px-3 sm:py-1 sm:text-[10px] sm:tracking-widest max-lg:max-w-[9rem] max-lg:truncate lg:max-w-none">
       Beta · Gemini + Replicate image
     </div>
   );

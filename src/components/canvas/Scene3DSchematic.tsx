@@ -462,7 +462,7 @@ export function Scene3DSchematic({
         className
       )}
     >
-      <p className="pointer-events-none absolute left-2 top-2 z-10 max-w-[90%] text-[9px] leading-tight text-muted-foreground/90">
+      <p className="pointer-events-none absolute left-2 top-2 z-10 max-w-[90%] text-[9px] leading-tight text-muted-foreground/90 max-lg:left-1 max-lg:top-1 max-lg:max-w-[85%] max-lg:text-[7px] max-lg:leading-tight">
         {interactive ? (
           <>
             Cube: F/B/L/R/U/D = product faces · Orbit view · Drag sun = key light
@@ -471,7 +471,7 @@ export function Scene3DSchematic({
           <>Preview only — enable scene tools to edit light</>
         )}
       </p>
-      <div className="h-[min(200px,28dvh)] w-full min-h-[160px]">
+      <div className="h-[min(200px,28dvh)] w-full min-h-[160px] max-lg:h-[min(112px,20dvh)] max-lg:min-h-[96px]">
         <Canvas
           shadows
           camera={{ position: [5.2, 3.4, 5.4], fov: 42, near: 0.1, far: 80 }}

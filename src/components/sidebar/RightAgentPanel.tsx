@@ -80,24 +80,26 @@ export function RightAgentPanel({
   return (
     <aside
       className={cn(
-        "glass-panel flex w-full shrink-0 flex-col overflow-hidden rounded-xl lg:w-[320px]",
+        "glass-panel flex w-full shrink-0 flex-col overflow-hidden rounded-xl lg:w-[320px] max-lg:rounded-lg",
         className
       )}
     >
-      <div className="border-b border-white/10 px-4 py-3">
+      <div className="border-b border-white/10 px-4 py-3 max-lg:px-3 max-lg:py-2.5">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold tracking-tight">Agent</h2>
+          <Sparkles className="h-4 w-4 text-primary max-lg:h-3.5 max-lg:w-3.5" />
+          <h2 className="text-sm font-semibold tracking-tight max-lg:text-[13px]">
+            Agent
+          </h2>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground max-lg:mt-0.5 max-lg:text-[10px] max-lg:leading-snug">
           Commercial poster prompts — brand lockups, designed type, campaign polish.
         </p>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="space-y-3 p-4">
-          <div className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+        <div className="space-y-3 p-4 max-lg:space-y-2 max-lg:p-3">
+          <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3 max-lg:space-y-1.5 max-lg:p-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary max-lg:text-[9px]">
               Brand identity
             </p>
             <div className="space-y-1.5">
@@ -132,7 +134,7 @@ export function RightAgentPanel({
                 value={brandTagline}
                 onChange={(e) => onBrandTaglineChange(e.target.value)}
                 placeholder="Short line for the poster lockup"
-                className="min-h-[52px] text-xs"
+                className="min-h-[52px] text-xs max-lg:min-h-[44px] max-lg:text-[11px]"
               />
               {taglineSuggestions?.length ? (
                 <div className="flex flex-wrap gap-1.5 pt-1">
@@ -164,7 +166,7 @@ export function RightAgentPanel({
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] leading-snug text-muted-foreground">
+              <p className="text-[10px] leading-snug text-muted-foreground max-lg:text-[9px] max-lg:leading-tight">
                 Controls how on-image headlines and taglines are described to the
                 image model — art-directed, not plain text.
               </p>
@@ -178,13 +180,13 @@ export function RightAgentPanel({
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder='Short brief, or Expand to fill a full ad prompt'
-            className="min-h-[100px] max-h-[220px] resize-y text-sm"
+            className="min-h-[100px] max-h-[220px] resize-y text-sm max-lg:min-h-[72px] max-lg:max-h-[160px] max-lg:text-xs"
           />
-          <div className="flex gap-2">
+          <div className="flex gap-2 max-lg:gap-1.5">
             <Button
               type="button"
               variant="secondary"
-              className="flex-1 text-xs"
+              className="flex-1 text-xs max-lg:h-8 max-lg:text-[11px]"
               onClick={onExpand}
               disabled={expandLoading}
             >
@@ -196,7 +198,7 @@ export function RightAgentPanel({
             </Button>
             <Button
               type="button"
-              className="flex-1 text-xs gap-1"
+              className="flex-1 gap-1 text-xs max-lg:h-8 max-lg:text-[11px]"
               onClick={onGenerate}
               disabled={generateLoading || !canGenerate}
             >
@@ -204,7 +206,7 @@ export function RightAgentPanel({
               {generateLoading ? "Working…" : "Generate"}
             </Button>
           </div>
-          <p className="text-[10px] leading-snug text-muted-foreground">
+          <p className="text-[10px] leading-snug text-muted-foreground max-lg:text-[9px] max-lg:leading-tight">
             Expand replaces this text with a long ad-ready prompt. Edit it, then
             Generate — or change brand/style and Expand again.
           </p>
@@ -220,8 +222,8 @@ export function RightAgentPanel({
 
         <Separator className="bg-white/10" />
 
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-3">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-3 max-lg:px-3 max-lg:pb-3 max-lg:pt-2">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground max-lg:mb-1.5 max-lg:text-[10px]">
             <MessageSquare className="h-3.5 w-3.5" />
             Iteration
           </div>
@@ -281,8 +283,8 @@ export function RightAgentPanel({
               </div>
             </div>
           ) : null}
-          <ScrollArea className="min-h-[180px] flex-1 rounded-lg border border-white/10 bg-black/20">
-            <div className="space-y-3 p-3">
+          <ScrollArea className="min-h-[180px] flex-1 rounded-lg border border-white/10 bg-black/20 max-lg:min-h-[140px]">
+            <div className="space-y-3 p-3 max-lg:space-y-2 max-lg:p-2">
               {chat.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   After you generate once, describe changes here — e.g. &quot;Pull

@@ -166,7 +166,8 @@ export function AdCanvas({
         : `${currentSlot + 1} / ${totalSlots}`
       : null;
 
-  const previewWrapClass = "flex h-full w-full items-center justify-center overflow-hidden p-3 sm:p-4";
+  const previewWrapClass =
+    "flex h-full w-full items-center justify-center overflow-hidden p-3 sm:p-4 max-lg:p-2";
 
   return (
     <div
@@ -185,7 +186,7 @@ export function AdCanvas({
           backgroundSize: "24px 24px",
         }}
       />
-      <div className="relative z-10 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+      <div className="relative z-10 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2 max-lg:px-2 max-lg:py-1.5">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Badge variant="outline" className="shrink-0 font-mono text-[10px] uppercase tracking-wider">
             Canvas
@@ -216,7 +217,7 @@ export function AdCanvas({
               <img
                 src={productPreviewUrl}
                 alt=""
-                className="h-9 w-9 rounded object-cover sm:h-10 sm:w-10"
+                className="h-9 w-9 rounded object-cover sm:h-10 sm:w-10 max-lg:h-8 max-lg:w-8"
               />
             </button>
           ) : null}
@@ -237,15 +238,15 @@ export function AdCanvas({
       </div>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible">
-        <div className="relative mx-auto flex w-full max-w-lg flex-col px-3 pt-3 sm:px-4 sm:pt-4 pb-4">
+        <div className="relative mx-auto flex w-full max-w-lg flex-col px-3 pt-3 sm:px-4 sm:pt-4 pb-4 max-lg:px-2 max-lg:pb-2 max-lg:pt-2">
           <div className="relative w-full shrink-0" style={{ perspective: "1200px" }}>
             <div
               className={cn(
-                "flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-sm",
+                "flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-sm max-lg:rounded-xl",
                 isAnalyzing && "ring-2 ring-primary/40"
               )}
             >
-              <div className="relative min-h-[240px] h-[min(52dvh,480px)] w-full shrink-0">
+              <div className="relative min-h-[240px] h-[min(52dvh,480px)] w-full shrink-0 max-lg:min-h-[200px] max-lg:h-[min(36dvh,300px)]">
                 <div className="pointer-events-none absolute inset-0 rounded-t-2xl bg-gradient-to-br from-primary/10 via-transparent to-violet-500/10 blur-2xl" />
                 <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
                   <div className="relative min-h-0 flex-1">
@@ -267,14 +268,14 @@ export function AdCanvas({
                     />
                   </button>
                 ) : showVersionStack ? (
-                  <div className="relative flex h-full min-h-[240px] w-full items-center justify-center">
+                  <div className="relative flex h-full min-h-[240px] w-full items-center justify-center max-lg:min-h-[200px]">
                     {visibleVersions.map((v, i) => {
                       const depth = genActiveIndex - i;
                       const isFront = depth === 0;
                       return (
                         <motion.div
                           key={v.id}
-                          className="absolute inset-0 flex items-center justify-center px-3 sm:px-4"
+                          className="absolute inset-0 flex items-center justify-center px-3 sm:px-4 max-lg:px-2"
                           style={{
                             zIndex: 10 + i,
                             transformStyle: "preserve-3d",

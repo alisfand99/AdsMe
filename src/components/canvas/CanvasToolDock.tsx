@@ -118,7 +118,7 @@ export function CanvasToolDock({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[11px] font-medium text-muted-foreground transition hover:bg-white/[0.04] hover:text-foreground"
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[11px] font-medium text-muted-foreground transition hover:bg-white/[0.04] hover:text-foreground max-lg:px-2 max-lg:py-1.5 max-lg:text-[10px]"
       >
         <span className="flex items-center gap-2">
           <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
@@ -131,10 +131,10 @@ export function CanvasToolDock({
         )}
       </button>
       {open ? (
-        <div className="space-y-3 border-t border-white/5 px-3 pb-3 pt-2">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2.5 rounded-lg border border-white/10 bg-black/25 p-2.5">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+        <div className="space-y-3 border-t border-white/5 px-3 pb-3 pt-2 max-lg:space-y-2 max-lg:px-2 max-lg:pb-2 max-lg:pt-1.5">
+          <div className="grid gap-3 sm:grid-cols-2 max-lg:grid-cols-1 max-lg:gap-2">
+            <div className="space-y-2.5 rounded-lg border border-white/10 bg-black/25 p-2.5 max-lg:space-y-2 max-lg:p-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-primary max-lg:text-[9px]">
                 <Video className="h-3 w-3" />
                 Camera &amp; framing
               </p>
@@ -182,8 +182,8 @@ export function CanvasToolDock({
                 disabled={applyDisabled}
               />
             </div>
-            <div className="space-y-2.5 rounded-lg border border-white/10 bg-black/25 p-2.5">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">
+            <div className="space-y-2.5 rounded-lg border border-white/10 bg-black/25 p-2.5 max-lg:space-y-2 max-lg:p-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/90 max-lg:text-[9px]">
                 <SunMedium className="h-3 w-3" />
                 Key light
               </p>
@@ -221,11 +221,11 @@ export function CanvasToolDock({
               />
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-lg:gap-1.5">
             <Button
               type="button"
               size="sm"
-              className="h-8 gap-1.5 text-xs"
+              className="h-8 gap-1.5 text-xs max-lg:h-7 max-lg:text-[11px]"
               disabled={applyDisabled || applyLoading}
               onClick={onApplyRender}
             >
@@ -236,7 +236,7 @@ export function CanvasToolDock({
               type="button"
               size="sm"
               variant="outline"
-              className="h-8 gap-1 text-xs"
+              className="h-8 gap-1 text-xs max-lg:h-7 max-lg:text-[11px]"
               disabled={applyDisabled || applyLoading}
               onClick={() =>
                 onChange(
@@ -250,7 +250,7 @@ export function CanvasToolDock({
               {baselineScene ? "Match image est." : "Reset sliders"}
             </Button>
           </div>
-          <p className="border-t border-white/5 pt-2.5 text-[9px] leading-relaxed text-muted-foreground/90">
+          <p className="border-t border-white/5 pt-2.5 text-[9px] leading-relaxed text-muted-foreground/90 max-lg:pt-2 max-lg:text-[8px] max-lg:leading-snug">
             Scene controls only enrich the camera-and-lighting wording in your
             generation prompt—they are not executed as a deterministic 3D rig.
             The model treats that text as interpretive direction; pixel-accurate
