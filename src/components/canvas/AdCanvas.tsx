@@ -10,7 +10,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+import { useImageDropZone } from "@/lib/hooks/use-image-drop-zone";
 
 import { CanvasToolDock } from "@/components/canvas/CanvasToolDock";
 import {
@@ -57,6 +59,8 @@ type AdCanvasProps = {
   sceneBaselineFromImage?: CanvasSceneAdjustments | null;
   /** Passed to AI caption generator in the image viewer */
   captionContext?: ImageViewerCaptionContext;
+  /** Drop image on empty canvas (e.g. laptop center area). */
+  onFileSelect?: (file: File) => void;
   className?: string;
 };
 
@@ -77,9 +81,18 @@ export function AdCanvas({
   canUseCanvasTools,
   sceneBaselineFromImage = null,
   captionContext,
+  onFileSelect,
   className,
 }: AdCanvasProps) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  const onCanvasImageDrop = useCallback(
+    (file: File) => {
+      onFileSelect?.(file);
+    },
+    [onFileSelect]
+  );
+  const canvasEmptyDrop = useImageDropZone(onCanvasImageDrop);
 
   const hasProduct = Boolean(productPreviewUrl);
   const isViewingProduct =
@@ -361,16 +374,33 @@ export function AdCanvas({
                     </AnimatePresence>
                   </button>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center text-muted-foreground">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5">
+                  <div
+                    {...(onFileSelect ? canvasEmptyDrop.handlers : {})}
+                    className={cn(
+                      "flex h-full min-h-[200px] w-full flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground transition-colors max-lg:px-4",
+                      onFileSelect &&
+                        canvasEmptyDrop.active &&
+                        "rounded-xl border-2 border-dashed border-primary/50 bg-primary/5"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 transition-colors",
+                        onFileSelect &&
+                          canvasEmptyDrop.active &&
+                          "border-primary/40 bg-primary/10"
+                      )}
+                    >
                       <ImageIcon className="h-8 w-8 opacity-50" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground/80">
-                        Drop a product shot
+                        Drop a product shot here
                       </p>
                       <p className="mt-1 text-xs">
-                        Upload on the left — the agent will analyze and suggest directions.
+                        {onFileSelect
+                          ? "Or use the upload box — we analyze and suggest directions."
+                          : "Upload on the left — the agent will analyze and suggest directions."}
                       </p>
                     </div>
                   </div>
@@ -458,12 +488,14 @@ export function AdCanvas({
               </div>
 
               <div className="shrink-0 border-t border-white/10 bg-zinc-950/90">
-                <Scene3DSchematic
-                  adjustments={canvasAdjustments}
-                  onChange={onCanvasAdjustmentsChange}
-                  interactive={canUseCanvasTools}
-                />
                 <CanvasToolDock
+                  scenePreview={
+                    <Scene3DSchematic
+                      adjustments={canvasAdjustments}
+                      onChange={onCanvasAdjustmentsChange}
+                      interactive={canUseCanvasTools}
+                    />
+                  }
                   adjustments={canvasAdjustments}
                   baselineScene={sceneBaselineFromImage}
                   onChange={onCanvasAdjustmentsChange}

@@ -516,6 +516,7 @@ export function StudioWorkspace() {
                 ? { creativeContext }
                 : undefined
             }
+            onFileSelect={onFileSelect}
             className="min-h-0 flex-1 max-lg:min-h-[280px]"
           />
         </div>

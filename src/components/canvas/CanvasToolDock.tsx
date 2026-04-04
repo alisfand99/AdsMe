@@ -9,7 +9,7 @@ import {
   SunMedium,
   Video,
 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import type { CanvasSceneAdjustments } from "@/lib/canvas/canvas-adjustments";
 import { DEFAULT_CANVAS_ADJUSTMENTS } from "@/lib/canvas/canvas-adjustments";
@@ -91,6 +91,8 @@ type CanvasToolDockProps = {
   onApplyRender: () => void;
   applyDisabled: boolean;
   applyLoading: boolean;
+  /** 3D gizmo — only mounted while the panel is expanded. */
+  scenePreview?: ReactNode;
   className?: string;
 };
 
@@ -101,9 +103,10 @@ export function CanvasToolDock({
   onApplyRender,
   applyDisabled,
   applyLoading,
+  scenePreview,
   className,
 }: CanvasToolDockProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   const patch = (partial: Partial<CanvasSceneAdjustments>) =>
     onChange({ ...adjustments, ...partial });
@@ -117,6 +120,7 @@ export function CanvasToolDock({
     >
       <button
         type="button"
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[11px] font-medium text-muted-foreground transition hover:bg-white/[0.04] hover:text-foreground max-lg:px-2 max-lg:py-1.5 max-lg:text-[10px]"
       >
@@ -125,13 +129,15 @@ export function CanvasToolDock({
           Scene tools
         </span>
         {open ? (
-          <ChevronDown className="h-4 w-4 shrink-0" />
+          <ChevronUp className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
         ) : (
-          <ChevronUp className="h-4 w-4 shrink-0" />
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
         )}
       </button>
       {open ? (
-        <div className="space-y-3 border-t border-white/5 px-3 pb-3 pt-2 max-lg:space-y-2 max-lg:px-2 max-lg:pb-2 max-lg:pt-1.5">
+        <div className="border-t border-white/5">
+          {scenePreview ?? null}
+          <div className="space-y-3 px-3 pb-3 pt-2 max-lg:space-y-2 max-lg:px-2 max-lg:pb-2 max-lg:pt-1.5">
           <div className="grid gap-3 sm:grid-cols-2 max-lg:grid-cols-1 max-lg:gap-2">
             <div className="space-y-2.5 rounded-lg border border-white/10 bg-black/25 p-2.5 max-lg:space-y-2 max-lg:p-2">
               <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-primary max-lg:text-[9px]">
@@ -257,6 +263,7 @@ export function CanvasToolDock({
             or numerically exact reproduction of every adjustment is not
             guaranteed.
           </p>
+          </div>
         </div>
       ) : null}
     </div>

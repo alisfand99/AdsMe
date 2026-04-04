@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Upload, Wand2 } from "lucide-react";
+import { useImageDropZone } from "@/lib/hooks/use-image-drop-zone";
 
 import { AD_VISUAL_STYLES } from "@/lib/ad/ad-visual-styles";
 import type { CreativeDirection, ProductAnalysis } from "@/lib/ai/types";
@@ -38,32 +39,41 @@ export function LeftAssetsPanel({
   className,
   variant = "full",
 }: LeftAssetsPanelProps) {
+  const { active: uploadDragActive, handlers: uploadDropHandlers } =
+    useImageDropZone(onFileSelect);
+
   const uploadBlock = (
-    <label className="block">
-      <input
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onFileSelect(f);
-          e.target.value = "";
-        }}
-      />
-      <motion.div
-        whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.99 }}
-        className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/20 bg-white/[0.03] px-3 py-8 text-center transition-colors hover:border-primary/40 hover:bg-primary/5 max-lg:gap-1 max-lg:py-5 max-lg:px-3"
-      >
-        <Upload className="h-6 w-6 text-muted-foreground max-lg:h-5 max-lg:w-5" />
-        <span className="text-sm font-medium max-lg:text-xs">
-          Upload product image
-        </span>
-        <span className="text-xs text-muted-foreground max-lg:text-[10px] max-lg:leading-tight">
-          PNG, JPG — Gemini vision on the server
-        </span>
-      </motion.div>
-    </label>
+    <div {...uploadDropHandlers} className="rounded-lg">
+      <label className="block">
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFileSelect(f);
+            e.target.value = "";
+          }}
+        />
+        <motion.div
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          className={cn(
+            "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/20 bg-white/[0.03] px-3 py-8 text-center transition-colors hover:border-primary/40 hover:bg-primary/5 max-lg:gap-1 max-lg:py-5 max-lg:px-3",
+            uploadDragActive &&
+              "border-primary/60 bg-primary/10 ring-2 ring-primary/25"
+          )}
+        >
+          <Upload className="h-6 w-6 text-muted-foreground max-lg:h-5 max-lg:w-5" />
+          <span className="text-sm font-medium max-lg:text-xs">
+            Upload product image
+          </span>
+          <span className="text-xs text-muted-foreground max-lg:text-[10px] max-lg:leading-tight">
+            Drag &amp; drop or click · PNG, JPG
+          </span>
+        </motion.div>
+      </label>
+    </div>
   );
 
   const creativeBody = (
