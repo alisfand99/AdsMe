@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:apis": "node scripts/test-apis.mjs",
+    "test:gemini:vision": "node scripts/test-gemini-vision.mjs",
     "temp:google-image": "node scripts/temp-google-image-gen.mjs",
     "hero:image": "node scripts/generate-hero-marketing.mjs"
   },

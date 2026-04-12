@@ -467,7 +467,7 @@ export function StudioWorkspace() {
   }, [generateLoading]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950 text-foreground">
+    <div className="flex min-h-0 flex-1 flex-col bg-zinc-950 text-foreground">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <SiteHeaderLogo />
@@ -489,7 +489,7 @@ export function StudioWorkspace() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35 }}
         className={cn(
-          "flex min-h-0 min-h-[calc(100vh-3.5rem)] flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3 sm:gap-4 sm:p-4 lg:flex-row max-lg:gap-2 max-lg:p-2",
+          "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-3 sm:gap-4 sm:p-4 lg:flex-row max-lg:gap-2 max-lg:p-2",
           "max-lg:pb-[calc(6.25rem+env(safe-area-inset-bottom,0px))]",
           imageApiDebug &&
             imageApiDebugOpen &&
