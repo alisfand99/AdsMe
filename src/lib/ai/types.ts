@@ -66,6 +66,14 @@ export type SuggestTaglinesResult = {
   taglines: string[];
 };
 
+export type SuggestBrandProfileResult = {
+  missionOptions: string[];
+  taglines: string[];
+  visualIdentityBullets: string[];
+  suggestedVoice: string;
+  voiceRationale: string;
+};
+
 export type ComposeCanvasAdjustmentsResult = {
   augmentedPrompt: string;
   adjustmentSummary: string;

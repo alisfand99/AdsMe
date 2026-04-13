@@ -8,14 +8,20 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
       productSummary?: string;
+      brandBrief?: string;
       brandName?: string;
       imageDataUrl?: string;
     };
     const productSummary =
       typeof body.productSummary === "string" ? body.productSummary : "";
-    if (!productSummary.trim()) {
+    const brandBrief =
+      typeof body.brandBrief === "string" ? body.brandBrief : "";
+    if (!productSummary.trim() && !brandBrief.trim()) {
       return Response.json(
-        { error: "productSummary is required (e.g. category, materials, colors)" },
+        {
+          error:
+            "Send productSummary (from vision analysis) and/or brandBrief (brand profile text)",
+        },
         { status: 400 }
       );
     }
@@ -25,7 +31,8 @@ export async function POST(req: Request) {
       return Response.json({ error: "Image payload too large" }, { status: 413 });
     }
     const result = await suggestTaglinesWithGemini({
-      productSummary,
+      productSummary: productSummary.trim() || undefined,
+      brandBrief: brandBrief.trim() || undefined,
       brandName: body.brandName,
       imageDataUrl: optionalImage,
     });

@@ -9,6 +9,7 @@ import type {
   RefinementResult,
   SocialCaptionPlatform,
   SocialCaptionResult,
+  SuggestBrandProfileResult,
   SuggestTaglinesResult,
 } from "./types";
 
@@ -60,11 +61,26 @@ export async function refineFromChatHistory(
 }
 
 export async function suggestAdvertisingTaglines(input: {
-  productSummary: string;
+  productSummary?: string;
+  brandBrief?: string;
   brandName?: string;
   imageDataUrl?: string;
 }): Promise<SuggestTaglinesResult> {
   return postJson<SuggestTaglinesResult>("/api/ai/suggest-tagline", input);
+}
+
+export async function suggestBrandProfile(input: {
+  brandName?: string;
+  brandTagline?: string;
+  brandNarrative?: string;
+  targetAudience?: string;
+  brandVoice?: string;
+  visualIdentityRules?: string;
+}): Promise<SuggestBrandProfileResult> {
+  return postJson<SuggestBrandProfileResult>(
+    "/api/ai/suggest-brand-profile",
+    input
+  );
 }
 
 export async function composeCanvasAdjustments(input: {

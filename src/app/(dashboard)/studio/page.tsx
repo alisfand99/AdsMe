@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { StudioWorkspace } from "./studio-workspace";
+import { StudioWorkspaceContainer } from "./studio-workspace-container";
 
 export const metadata: Metadata = {
   title: "Studio | HeroFrame AI",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function StudioPage() {
-  return <StudioWorkspace />;
+  return <StudioWorkspaceContainer />;
 }

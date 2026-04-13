@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SiteHeaderLogo } from "@/components/brand/SiteHeaderLogo";
 import { AdCanvas } from "@/components/canvas/AdCanvas";
@@ -17,10 +18,7 @@ import {
   getAdVisualStyle,
 } from "@/lib/ad/ad-visual-styles";
 import { buildAdCreativeContext } from "@/lib/ad/creative-context";
-import {
-  DEFAULT_TYPOGRAPHY_STYLE_ID,
-  getAdTypographyStyle,
-} from "@/lib/ad/typography-styles";
+import { getAdTypographyStyle } from "@/lib/ad/typography-styles";
 import {
   analyzeProductImage,
   analyzeSceneFromImage,
@@ -31,6 +29,10 @@ import {
   suggestAdvertisingTaglines,
   toImageDataUrl,
 } from "@/lib/ai";
+import { buildBrandBriefFromProfile, profileHasBrandSignal } from "@/lib/brand/brand-brief";
+import { dataUrlToFile } from "@/lib/studio/data-url-to-file";
+import { useBrand } from "@/contexts/brand-context";
+import { useInventory } from "@/contexts/inventory-context";
 import {
   DEFAULT_CANVAS_ADJUSTMENTS,
 } from "@/lib/canvas/canvas-adjustments";
@@ -38,7 +40,14 @@ import type { ChatTurn, IterationVersion, ProductAnalysis } from "@/lib/ai/types
 import { PRODUCT_SOURCE_VERSION_ID } from "@/lib/studio/constants";
 import { cn } from "@/lib/utils";
 
-export function StudioWorkspace() {
+type StudioWorkspaceProps = {
+  /** When opening `/studio?inventory=<id>`, load that product image into the pipeline. */
+  inventoryProductId?: string | null;
+};
+
+export function StudioWorkspace({
+  inventoryProductId = null,
+}: StudioWorkspaceProps) {
   const [productPreviewUrl, setProductPreviewUrl] = useState<string | null>(null);
   /** Base64 data URL for API routes (blob: preview URLs cannot be sent to the server). */
   const [productDataUrl, setProductDataUrl] = useState<string | null>(null);
@@ -76,11 +85,10 @@ export function StudioWorkspace() {
   const [selectedAdStyleId, setSelectedAdStyleId] = useState(
     DEFAULT_AD_VISUAL_STYLE_ID
   );
-  const [brandName, setBrandName] = useState("");
-  const [brandTagline, setBrandTagline] = useState("");
-  const [typographyStyleId, setTypographyStyleId] = useState(
-    DEFAULT_TYPOGRAPHY_STYLE_ID
-  );
+  const { profile, patchProfile } = useBrand();
+  const { getProduct, products } = useInventory();
+  const router = useRouter();
+  const appliedInventoryRef = useRef<string | null>(null);
   const [taglineSuggestions, setTaglineSuggestions] = useState<string[] | null>(
     null
   );
@@ -127,36 +135,44 @@ export function StudioWorkspace() {
 
   const creativeContext = useMemo(() => {
     const visual = getAdVisualStyle(selectedAdStyleId);
-    const typo = getAdTypographyStyle(typographyStyleId);
+    const typo = getAdTypographyStyle(profile.typographyStyleId);
     if (!visual || !typo) return undefined;
     return buildAdCreativeContext({
       visualStyle: visual,
       typography: typo,
-      brandName,
-      brandTagline,
+      brandName: profile.brandName,
+      brandTagline: profile.brandTagline,
       selectedCreativeDirection: selectedDirectionTitle,
       analysis,
     });
   }, [
     selectedAdStyleId,
-    typographyStyleId,
-    brandName,
-    brandTagline,
+    profile.typographyStyleId,
+    profile.brandName,
+    profile.brandTagline,
     selectedDirectionTitle,
     analysis,
   ]);
 
   const onSuggestTaglines = useCallback(async () => {
-    if (!analysis) return;
+    if (!analysis && !profileHasBrandSignal(profile)) return;
     setSuggestTaglinesLoading(true);
     setTaglineSuggestions(null);
     try {
-      const productSummary = `Category: ${analysis.category}. Colors: ${analysis.dominantColors.join(", ")}. Materials / finish: ${analysis.materialGuess}.`;
-      const res = await suggestAdvertisingTaglines({
-        productSummary,
-        brandName: brandName.trim() || undefined,
-        imageDataUrl: productDataUrl ?? undefined,
-      });
+      const brandBrief = buildBrandBriefFromProfile(profile);
+      const res = await suggestAdvertisingTaglines(
+        analysis
+          ? {
+              productSummary: `Category: ${analysis.category}. Colors: ${analysis.dominantColors.join(", ")}. Materials / finish: ${analysis.materialGuess}.`,
+              brandBrief,
+              brandName: profile.brandName.trim() || undefined,
+              imageDataUrl: productDataUrl ?? undefined,
+            }
+          : {
+              brandBrief,
+              brandName: profile.brandName.trim() || undefined,
+            }
+      );
       setTaglineSuggestions(res.taglines.length ? res.taglines : null);
     } catch (e) {
       console.error(e);
@@ -164,7 +180,7 @@ export function StudioWorkspace() {
     } finally {
       setSuggestTaglinesLoading(false);
     }
-  }, [analysis, brandName, productDataUrl]);
+  }, [analysis, profile, productDataUrl]);
 
   const onFileSelect = useCallback(async (file: File) => {
     const url = URL.createObjectURL(file);
@@ -215,6 +231,38 @@ export function StudioWorkspace() {
     },
     [onFileSelect]
   );
+
+  useEffect(() => {
+    if (!inventoryProductId) {
+      appliedInventoryRef.current = null;
+      return;
+    }
+    if (appliedInventoryRef.current === inventoryProductId) return;
+    const p = getProduct(inventoryProductId);
+    const dataUrl = p?.imageDataUrl;
+    if (!p || !dataUrl) return;
+    appliedInventoryRef.current = inventoryProductId;
+    void (async () => {
+      try {
+        const safe = (p.name || "product").replace(/[^\w\-\s]/g, "").trim() || "product";
+        const file = await dataUrlToFile(
+          dataUrl,
+          `${safe.slice(0, 48)}.jpg`
+        );
+        await onFileSelectWithMobileNav(file);
+        router.replace("/studio", { scroll: false });
+      } catch (e) {
+        console.error(e);
+        appliedInventoryRef.current = null;
+      }
+    })();
+  }, [
+    inventoryProductId,
+    getProduct,
+    products,
+    onFileSelectWithMobileNav,
+    router,
+  ]);
 
   const onExpand = useCallback(async () => {
     setExpandLoading(true);
@@ -568,18 +616,22 @@ export function StudioWorkspace() {
           )}
         />
         <RightAgentPanel
-          brandName={brandName}
-          brandTagline={brandTagline}
-          typographyStyleId={typographyStyleId}
-          onBrandNameChange={setBrandName}
-          onBrandTaglineChange={setBrandTagline}
-          onTypographyStyleChange={setTypographyStyleId}
+          brandName={profile.brandName}
+          brandTagline={profile.brandTagline}
+          typographyStyleId={profile.typographyStyleId}
+          onBrandNameChange={(v) => patchProfile({ brandName: v })}
+          onBrandTaglineChange={(v) => patchProfile({ brandTagline: v })}
+          onTypographyStyleChange={(id) =>
+            patchProfile({ typographyStyleId: id })
+          }
           onSuggestTaglines={onSuggestTaglines}
           suggestTaglinesLoading={suggestTaglinesLoading}
-          canSuggestTaglines={Boolean(analysis)}
+          canSuggestTaglines={
+            Boolean(analysis) || profileHasBrandSignal(profile)
+          }
           taglineSuggestions={taglineSuggestions}
           onPickTaglineSuggestion={(line) => {
-            setBrandTagline(line);
+            patchProfile({ brandTagline: line });
             setTaglineSuggestions(null);
           }}
           prompt={prompt}

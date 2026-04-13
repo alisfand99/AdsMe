@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageSquare, SendHorizonal, Sparkles, Wand2 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { AD_TYPOGRAPHY_STYLES } from "@/lib/ad/typography-styles";
@@ -41,6 +42,8 @@ type RightAgentPanelProps = {
   onSendChat: (message: string) => void;
   chatLoading: boolean;
   className?: string;
+  /** When set, show a link to the full Brand Profile page. */
+  brandProfileHref?: string;
 };
 
 export function RightAgentPanel({
@@ -73,6 +76,7 @@ export function RightAgentPanel({
   onSendChat,
   chatLoading,
   className,
+  brandProfileHref = "/brand",
 }: RightAgentPanelProps) {
   const [chatInput, setChatInput] = useState("");
 
@@ -223,9 +227,19 @@ export function RightAgentPanel({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="space-y-3 p-4 max-lg:space-y-2 max-lg:p-3">
           <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3 max-lg:space-y-1.5 max-lg:p-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary max-lg:text-[9px]">
-              Brand identity
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary max-lg:text-[9px]">
+                Brand identity
+              </p>
+              {brandProfileHref ? (
+                <Link
+                  href={brandProfileHref}
+                  className="shrink-0 text-[10px] font-medium text-violet-300/90 underline-offset-2 hover:text-primary hover:underline max-lg:text-[9px]"
+                >
+                  Full profile
+                </Link>
+              ) : null}
+            </div>
             <div className="space-y-1.5">
               <label className="text-[11px] text-muted-foreground">
                 Brand name

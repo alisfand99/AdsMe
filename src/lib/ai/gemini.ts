@@ -23,6 +23,7 @@ import type {
   RefinementResult,
   SocialCaptionPlatform,
   SocialCaptionResult,
+  SuggestBrandProfileResult,
   SuggestTaglinesResult,
 } from "./types";
 
@@ -194,6 +195,43 @@ const taglinesSchema: ResponseSchema = {
     },
   },
   required: ["taglines"],
+};
+
+const brandProfileSuggestSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    missionOptions: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+      description: "2–3 alternative brand mission / narrative paragraphs, English",
+    },
+    taglines: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+      description: "3–5 short poster taglines, English",
+    },
+    visualIdentityBullets: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+      description: "3–5 concrete visual rules for designers / image models",
+    },
+    suggestedVoice: {
+      type: SchemaType.STRING,
+      description:
+        "One of: professional, playful, luxury, minimalist, bold — lowercase",
+    },
+    voiceRationale: {
+      type: SchemaType.STRING,
+      description: "One sentence why that voice fits",
+    },
+  },
+  required: [
+    "missionOptions",
+    "taglines",
+    "visualIdentityBullets",
+    "suggestedVoice",
+    "voiceRationale",
+  ],
 };
 
 const socialCaptionSchema: ResponseSchema = {
@@ -485,18 +523,41 @@ export async function composeCanvasAdjustmentsWithGemini(input: {
   };
 }
 
+const BRAND_VOICES = [
+  "professional",
+  "playful",
+  "luxury",
+  "minimalist",
+  "bold",
+] as const;
+
+function normalizeSuggestedVoice(raw: string): (typeof BRAND_VOICES)[number] {
+  const v = raw.trim().toLowerCase();
+  return BRAND_VOICES.includes(v as (typeof BRAND_VOICES)[number])
+    ? (v as (typeof BRAND_VOICES)[number])
+    : "professional";
+}
+
 export async function suggestTaglinesWithGemini(input: {
-  productSummary: string;
+  productSummary?: string;
+  brandBrief?: string;
   brandName?: string;
   imageDataUrl?: string;
 }): Promise<SuggestTaglinesResult> {
   const model = getModel();
   const brand =
     typeof input.brandName === "string" ? input.brandName.trim() : "";
-  const summary = input.productSummary.trim() || "General consumer product";
+  const fromProduct =
+    typeof input.productSummary === "string" ? input.productSummary.trim() : "";
+  const fromBrand =
+    typeof input.brandBrief === "string" ? input.brandBrief.trim() : "";
+  const summary =
+    fromProduct ||
+    fromBrand ||
+    "General consumer product — invent tasteful neutral lines";
 
   const textIntro = `You write short advertising taglines for posters and paid social statics.
-Product / market context:
+Product / market / brand context:
 ${summary}
 ${brand ? `Brand name to align with: ${brand}` : "No brand name — lines should work as generic claims or invite adding a name later."}
 
@@ -530,6 +591,76 @@ Each tagline: max ~8 words, punchy, professional, suitable for designed lockup u
     .filter(Boolean)
     .slice(0, 5);
   return { taglines };
+}
+
+export async function suggestBrandProfileWithGemini(input: {
+  brandName?: string;
+  brandTagline?: string;
+  brandNarrative?: string;
+  targetAudience?: string;
+  brandVoice?: string;
+  visualIdentityRules?: string;
+}): Promise<SuggestBrandProfileResult> {
+  const model = getModel();
+  const ctx = [
+    input.brandName?.trim() && `Brand name: ${input.brandName.trim()}`,
+    input.brandTagline?.trim() && `Tagline: ${input.brandTagline.trim()}`,
+    input.brandNarrative?.trim() && `Mission / narrative: ${input.brandNarrative.trim()}`,
+    input.targetAudience?.trim() && `Audience: ${input.targetAudience.trim()}`,
+    input.brandVoice?.trim() && `Current voice label: ${input.brandVoice.trim()}`,
+    input.visualIdentityRules?.trim() &&
+      `Visual rules draft: ${input.visualIdentityRules.trim()}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const text = `You are a senior brand strategist for SMBs building a Marketing OS profile.
+
+Current draft (fields may be empty — infer carefully and stay practical):
+${ctx || "(empty draft — propose a coherent starter kit for a modern SMB)"}
+
+Return JSON only with:
+- missionOptions: 2–3 alternative mission statements (1–3 sentences each), English, specific not generic fluff
+- taglines: 3–5 short poster taglines (max ~8 words each)
+- visualIdentityBullets: 3–5 bullets for photographers / designers (lighting, palette, subjects to avoid, layout)
+- suggestedVoice: exactly one of: professional, playful, luxury, minimalist, bold (lowercase)
+- voiceRationale: one tight sentence explaining suggestedVoice`;
+
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts: [{ text }] }],
+    generationConfig: {
+      temperature: 0.8,
+      responseMimeType: "application/json",
+      responseSchema: brandProfileSuggestSchema,
+    },
+  });
+
+  const parsed = parseJson<{
+    missionOptions: string[];
+    taglines: string[];
+    visualIdentityBullets: string[];
+    suggestedVoice: string;
+    voiceRationale: string;
+  }>(result.response.text());
+
+  const voice = normalizeSuggestedVoice(parsed.suggestedVoice ?? "");
+
+  return {
+    missionOptions: (parsed.missionOptions ?? [])
+      .map((s) => String(s).trim())
+      .filter(Boolean)
+      .slice(0, 3),
+    taglines: (parsed.taglines ?? [])
+      .map((s) => String(s).trim())
+      .filter(Boolean)
+      .slice(0, 5),
+    visualIdentityBullets: (parsed.visualIdentityBullets ?? [])
+      .map((s) => String(s).trim())
+      .filter(Boolean)
+      .slice(0, 5),
+    suggestedVoice: voice,
+    voiceRationale: String(parsed.voiceRationale ?? "").trim(),
+  };
 }
 
 const SOCIAL_PLATFORM_GUIDE: Record<SocialCaptionPlatform, string> = {
