@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { ImagePlus, Package, Trash2, Wand2 } from "lucide-react";
+import { ImagePlus, Package, Pencil, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { InventoryProductSheet } from "./inventory-product-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,8 @@ import { cn } from "@/lib/utils";
 const MAX_IMAGE_CHARS = 2_400_000;
 
 export function InventoryView() {
-  const { products, addProduct, removeProduct } = useInventory();
+  const { products, addProduct, removeProduct, updateProduct } = useInventory();
+  const [sheetProductId, setSheetProductId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [narrative, setNarrative] = useState("");
   const [specs, setSpecs] = useState("");
@@ -38,6 +40,16 @@ export function InventoryView() {
     };
     reader.readAsDataURL(f);
   }, []);
+
+  const sheetProduct = sheetProductId
+    ? products.find((p) => p.id === sheetProductId) ?? null
+    : null;
+
+  useEffect(() => {
+    if (sheetProductId && !products.some((p) => p.id === sheetProductId)) {
+      setSheetProductId(null);
+    }
+  }, [products, sheetProductId]);
 
   const onAdd = () => {
     const n = name.trim();
@@ -166,7 +178,7 @@ export function InventoryView() {
               {products.map((p) => (
                 <li
                   key={p.id}
-                  className="glass-panel flex gap-4 rounded-xl p-4 sm:items-start"
+                  className="glass-panel flex gap-4 rounded-xl p-4 transition hover:border-white/15 sm:items-start"
                 >
                   <div
                     className={cn(
@@ -195,6 +207,16 @@ export function InventoryView() {
                       </p>
                     ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => setSheetProductId(p.id)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </Button>
                       {p.imageDataUrl ? (
                         <Button variant="default" size="sm" asChild>
                           <Link href={`/studio?inventory=${p.id}`}>
@@ -202,8 +224,8 @@ export function InventoryView() {
                           </Link>
                         </Button>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground">
-                          Add a hero image to open in Studio
+                        <span className="self-center text-[11px] text-muted-foreground">
+                          Add a hero image in Edit to open in Studio
                         </span>
                       )}
                       <Button
@@ -224,6 +246,14 @@ export function InventoryView() {
           )}
         </section>
       </div>
+
+      <InventoryProductSheet
+        product={sheetProduct}
+        open={Boolean(sheetProduct)}
+        onClose={() => setSheetProductId(null)}
+        onUpdate={(id, patch) => updateProduct(id, patch)}
+        onRemoveProduct={removeProduct}
+      />
     </div>
   );
 }
