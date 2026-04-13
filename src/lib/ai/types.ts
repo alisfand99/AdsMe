@@ -103,6 +103,12 @@ export type MarketingAssistantBrandPatch = {
   typographyStyleId?: string;
 };
 
+export type MarketingAssistantCalendarChannel =
+  | "instagram"
+  | "linkedin"
+  | "facebook"
+  | "tiktok";
+
 export type MarketingAssistantAction =
   | { type: "update_brand"; patch: MarketingAssistantBrandPatch }
   | {
@@ -111,11 +117,61 @@ export type MarketingAssistantAction =
       narrative: string;
       specs: string;
       includeLatestUserImage: boolean;
-    };
+    }
+  | {
+      type: "update_inventory_product";
+      productId: string;
+      name?: string;
+      narrative?: string;
+      specs?: string;
+      includeLatestUserImage?: boolean;
+      clearImage?: boolean;
+    }
+  | { type: "remove_inventory_product"; productId: string }
+  | { type: "set_marketing_webhook"; url: string }
+  | {
+      type: "add_calendar_post";
+      title: string;
+      channel: MarketingAssistantCalendarChannel;
+      scheduledAt: string;
+      status: "draft" | "scheduled" | "published";
+      notes?: string;
+    }
+  | {
+      type: "update_calendar_post";
+      postId: string;
+      title?: string;
+      channel?: MarketingAssistantCalendarChannel;
+      scheduledAt?: string;
+      status?: "draft" | "scheduled" | "published";
+      /** Empty string clears notes when provided */
+      notes?: string;
+    }
+  | { type: "remove_calendar_post"; postId: string };
 
 export type MarketingAssistantResult = {
   assistantMessage: string;
   actions: MarketingAssistantAction[];
+};
+
+export type MarketingAssistantInventoryRow = {
+  id: string;
+  name: string;
+  narrative?: string;
+  specs?: string;
+  hasImage?: boolean;
+};
+
+export type MarketingAssistantMarketingSummary = {
+  posts: {
+    id: string;
+    title: string;
+    channel: string;
+    scheduledAt: string;
+    status: string;
+    notes?: string;
+  }[];
+  n8nWebhookUrl: string;
 };
 
 /** Request body for POST /api/ai/marketing-assistant */
@@ -124,5 +180,6 @@ export type MarketingAssistantApiRequest = {
   message: string;
   images?: string[];
   brandProfile: Record<string, unknown>;
-  inventorySummary: { id: string; name: string }[];
+  inventorySummary: MarketingAssistantInventoryRow[];
+  marketingSummary?: MarketingAssistantMarketingSummary;
 };

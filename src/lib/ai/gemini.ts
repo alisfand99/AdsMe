@@ -259,24 +259,42 @@ const marketingAssistantActionItemSchema: ResponseSchema = {
     type: {
       type: SchemaType.STRING,
       description:
-        'Exactly one of: "update_brand", "add_inventory_product", "noop"',
+        'One of: update_brand | add_inventory_product | update_inventory_product | remove_inventory_product | set_marketing_webhook | add_calendar_post | update_calendar_post | remove_calendar_post | noop',
     },
     brandPatchJson: {
       type: SchemaType.STRING,
       description:
-        'For update_brand: JSON object with any of brandName, brandTagline, brandNarrative, targetAudience, brandVoice, visualIdentityRules, typographyStyleId. Use "{}" if N/A.',
+        'For update_brand: JSON with brandName, brandTagline, brandNarrative, targetAudience, brandVoice, visualIdentityRules, typographyStyleId.',
     },
-    productName: {
+    productId: {
       type: SchemaType.STRING,
-      description: "For add_inventory_product: display name",
+      description: "Inventory product id for update/remove.",
     },
+    clearProductImage: {
+      type: SchemaType.BOOLEAN,
+      description: "If true, remove hero image from that inventory product.",
+    },
+    productName: { type: SchemaType.STRING },
     productNarrative: { type: SchemaType.STRING },
     productSpecs: { type: SchemaType.STRING },
     includeLatestUserImage: {
       type: SchemaType.BOOLEAN,
       description:
-        "If true, attach the user's latest uploaded product image to the new inventory row.",
+        "Attach latest user-uploaded image to new or existing inventory product.",
     },
+    webhookUrl: {
+      type: SchemaType.STRING,
+      description: "Full https URL for n8n webhook (set_marketing_webhook).",
+    },
+    postId: { type: SchemaType.STRING, description: "Calendar post id." },
+    calendarTitle: { type: SchemaType.STRING },
+    calendarChannel: {
+      type: SchemaType.STRING,
+      description: "instagram | linkedin | facebook | tiktok",
+    },
+    calendarScheduledAt: { type: SchemaType.STRING },
+    calendarStatus: { type: SchemaType.STRING },
+    calendarNotes: { type: SchemaType.STRING },
   },
   required: ["type"],
 };
@@ -292,7 +310,7 @@ const marketingAssistantResponseSchema: ResponseSchema = {
       type: SchemaType.ARRAY,
       items: marketingAssistantActionItemSchema,
       description:
-        "Executable mutations. Only when user clearly asks to apply or confirms.",
+        "Proposed mutations — the user must tap Apply in the app before they run. Only when they clearly request changes.",
     },
   },
   required: ["assistantMessage", "actions"],
@@ -799,31 +817,44 @@ export async function runMarketingAssistantWithGemini(input: {
   message: string;
   images?: string[];
   brandProfile: Record<string, unknown>;
-  inventorySummary: { id: string; name: string }[];
+  inventorySummary: Record<string, unknown>[];
+  marketingSummary?: Record<string, unknown>;
 }): Promise<MarketingAssistantResult> {
   const model = getModel();
-  const systemInstruction = `You are the in-app "Marketing OS" assistant for HeroFrame AI (SMB brand + inventory + studio).
+  const systemInstruction = `You are the in-app "Marketing OS" assistant for HeroFrame AI (SMB brand, inventory, marketing room).
 
-You help by chatting and, when appropriate, returning structured ACTIONS the app will execute automatically. The user should NOT need to hunt through the UI.
+You chat naturally and may propose STRUCTURED ACTIONS. Important: the app shows an **Apply** button — changes are NOT live until the user taps Apply. Never claim data is already saved.
 
 Rules:
 - Be concise, practical, and friendly. Match the user's language when reasonable (Persian or English).
-- NEVER pretend you navigated the app or opened a URL.
-- Only include actions when the user clearly asks you to set/apply/save something, or explicitly confirms (e.g. "ok set brand name to X", "همین اسم رو بذار", "yes apply that").
-- For brand updates, use action type "update_brand" with brandPatchJson: a JSON object containing only allowed keys you want to change: brandName, brandTagline, brandNarrative, targetAudience, brandVoice, visualIdentityRules, typographyStyleId. Omit keys you are not changing.
-- brandVoice must be one of: professional, playful, luxury, minimalist, bold (lowercase).
-- typographyStyleId MUST be one of these ids exactly: ${MARKETING_ASSISTANT_TYPOGRAPHY_INDEX}
-- For new catalog rows, use "add_inventory_product" with productName (required), productNarrative, productSpecs, and includeLatestUserImage true ONLY if the user attached a product image in this message and wants it saved to Inventory.
-- If nothing should be executed, use a single action {"type":"noop"} or an empty actions array.
-- At most ${8} actions. Prefer one update_brand with merged fields over many tiny patches.
-- Do not invent private URLs or API keys.`;
+- NEVER pretend you opened a browser tab or URL.
+- Include actions only when the user clearly wants data changed (e.g. rename brand, edit a product, add/remove catalog row, set webhook, add/remove calendar draft).
+- update_brand: brandPatchJson JSON with only keys to change: brandName, brandTagline, brandNarrative, targetAudience, brandVoice, visualIdentityRules, typographyStyleId.
+- brandVoice: professional | playful | luxury | minimalist | bold (lowercase).
+- typographyStyleId must be one of: ${MARKETING_ASSISTANT_TYPOGRAPHY_INDEX}
+- add_inventory_product: productName required; includeLatestUserImage true only if user attached an image in this turn and wants it on that product.
+- update_inventory_product: productId required; optional productName, productNarrative, productSpecs; includeLatestUserImage; clearProductImage true to remove image.
+- remove_inventory_product: productId.
+- set_marketing_webhook: webhookUrl must be https (or http for local dev).
+- add_calendar_post: calendarTitle, calendarChannel (instagram|linkedin|facebook|tiktok), calendarScheduledAt (datetime-local style string), calendarStatus optional (draft default), calendarNotes optional.
+- update_calendar_post / remove_calendar_post: postId from the marketing summary list.
+- If no mutations, return actions [] or {"type":"noop"}.
+- At most 12 actions; merge logically (one update_brand with many keys preferred).
+- Do not invent secrets or private URLs beyond what the user asked.`;
+
+  const marketingBlock = input.marketingSummary
+    ? `Marketing room:
+${JSON.stringify(input.marketingSummary)}`
+    : "Marketing room: (not provided)";
 
   const contextBlock = `AUTHORITATIVE APP STATE (JSON; refreshed every request):
 Brand profile:
 ${JSON.stringify(input.brandProfile)}
 
-Inventory (id + name only):
-${JSON.stringify(input.inventorySummary)}`;
+Inventory (rows; use id for updates/deletes):
+${JSON.stringify(input.inventorySummary)}
+
+${marketingBlock}`;
 
   const trimmedHistory = input.history.slice(-16);
   type Part =
@@ -873,8 +904,27 @@ ${clipAssistantText(input.message, 12_000)}`,
   });
 
   const parsed = parseJson<unknown>(result.response.text());
-  return sanitizeMarketingAssistantResult(
-    parsed,
-    (input.images ?? []).filter(Boolean).length
+  const validProductIds = new Set(
+    input.inventorySummary
+      .map((row) =>
+        row && typeof row === "object" && typeof (row as { id?: unknown }).id === "string"
+          ? String((row as { id: string }).id)
+          : ""
+      )
+      .filter(Boolean)
   );
+  const validPostIds = new Set<string>();
+  const ms = input.marketingSummary;
+  if (ms && typeof ms === "object" && Array.isArray((ms as { posts?: unknown }).posts)) {
+    for (const p of (ms as { posts: unknown[] }).posts) {
+      if (p && typeof p === "object" && typeof (p as { id?: unknown }).id === "string") {
+        validPostIds.add(String((p as { id: string }).id));
+      }
+    }
+  }
+  return sanitizeMarketingAssistantResult(parsed, {
+    latestUserImageCount: (input.images ?? []).filter(Boolean).length,
+    validInventoryProductIds: validProductIds,
+    validCalendarPostIds: validPostIds,
+  });
 }
