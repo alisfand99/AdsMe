@@ -91,3 +91,38 @@ export type SocialCaptionResult = {
   /** Space-separated tags without leading # */
   hashtags: string;
 };
+
+/** Partial brand fields the assistant may set (validated server-side). */
+export type MarketingAssistantBrandPatch = {
+  brandName?: string;
+  brandTagline?: string;
+  brandNarrative?: string;
+  targetAudience?: string;
+  brandVoice?: string;
+  visualIdentityRules?: string;
+  typographyStyleId?: string;
+};
+
+export type MarketingAssistantAction =
+  | { type: "update_brand"; patch: MarketingAssistantBrandPatch }
+  | {
+      type: "add_inventory_product";
+      name: string;
+      narrative: string;
+      specs: string;
+      includeLatestUserImage: boolean;
+    };
+
+export type MarketingAssistantResult = {
+  assistantMessage: string;
+  actions: MarketingAssistantAction[];
+};
+
+/** Request body for POST /api/ai/marketing-assistant */
+export type MarketingAssistantApiRequest = {
+  history: { role: "user" | "assistant"; content: string }[];
+  message: string;
+  images?: string[];
+  brandProfile: Record<string, unknown>;
+  inventorySummary: { id: string; name: string }[];
+};

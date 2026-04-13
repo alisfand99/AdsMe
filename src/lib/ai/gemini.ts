@@ -14,11 +14,15 @@ import {
   summarizeSceneDelta,
 } from "@/lib/canvas/scene-to-photographic-english";
 
+import { AD_TYPOGRAPHY_STYLES } from "@/lib/ad/typography-styles";
+
+import { sanitizeMarketingAssistantResult } from "./marketing-assistant-validate";
 import type {
   AdCreativeContext,
   ChatTurn,
   ComposeCanvasAdjustmentsResult,
   ExpandedPrompt,
+  MarketingAssistantResult,
   ProductAnalysis,
   RefinementResult,
   SocialCaptionPlatform,
@@ -247,6 +251,51 @@ const socialCaptionSchema: ResponseSchema = {
     },
   },
   required: ["caption", "hashtags"],
+};
+
+const marketingAssistantActionItemSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    type: {
+      type: SchemaType.STRING,
+      description:
+        'Exactly one of: "update_brand", "add_inventory_product", "noop"',
+    },
+    brandPatchJson: {
+      type: SchemaType.STRING,
+      description:
+        'For update_brand: JSON object with any of brandName, brandTagline, brandNarrative, targetAudience, brandVoice, visualIdentityRules, typographyStyleId. Use "{}" if N/A.',
+    },
+    productName: {
+      type: SchemaType.STRING,
+      description: "For add_inventory_product: display name",
+    },
+    productNarrative: { type: SchemaType.STRING },
+    productSpecs: { type: SchemaType.STRING },
+    includeLatestUserImage: {
+      type: SchemaType.BOOLEAN,
+      description:
+        "If true, attach the user's latest uploaded product image to the new inventory row.",
+    },
+  },
+  required: ["type"],
+};
+
+const marketingAssistantResponseSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    assistantMessage: {
+      type: SchemaType.STRING,
+      description: "Natural reply to the user (same language when possible).",
+    },
+    actions: {
+      type: SchemaType.ARRAY,
+      items: marketingAssistantActionItemSchema,
+      description:
+        "Executable mutations. Only when user clearly asks to apply or confirms.",
+    },
+  },
+  required: ["assistantMessage", "actions"],
 };
 
 const refinementSchema: ResponseSchema = {
@@ -734,4 +783,98 @@ Do not invent a fake brand name. If the image shows readable on-image copy, alig
     caption: String(parsed.caption ?? "").trim(),
     hashtags: String(parsed.hashtags ?? "").trim(),
   };
+}
+
+function clipAssistantText(s: string, max: number): string {
+  const t = s.trim();
+  return t.length <= max ? t : t.slice(0, max);
+}
+
+const MARKETING_ASSISTANT_TYPOGRAPHY_INDEX = AD_TYPOGRAPHY_STYLES.map(
+  (t) => `${t.id} (${t.label})`
+).join("; ");
+
+export async function runMarketingAssistantWithGemini(input: {
+  history: { role: "user" | "assistant"; content: string }[];
+  message: string;
+  images?: string[];
+  brandProfile: Record<string, unknown>;
+  inventorySummary: { id: string; name: string }[];
+}): Promise<MarketingAssistantResult> {
+  const model = getModel();
+  const systemInstruction = `You are the in-app "Marketing OS" assistant for HeroFrame AI (SMB brand + inventory + studio).
+
+You help by chatting and, when appropriate, returning structured ACTIONS the app will execute automatically. The user should NOT need to hunt through the UI.
+
+Rules:
+- Be concise, practical, and friendly. Match the user's language when reasonable (Persian or English).
+- NEVER pretend you navigated the app or opened a URL.
+- Only include actions when the user clearly asks you to set/apply/save something, or explicitly confirms (e.g. "ok set brand name to X", "همین اسم رو بذار", "yes apply that").
+- For brand updates, use action type "update_brand" with brandPatchJson: a JSON object containing only allowed keys you want to change: brandName, brandTagline, brandNarrative, targetAudience, brandVoice, visualIdentityRules, typographyStyleId. Omit keys you are not changing.
+- brandVoice must be one of: professional, playful, luxury, minimalist, bold (lowercase).
+- typographyStyleId MUST be one of these ids exactly: ${MARKETING_ASSISTANT_TYPOGRAPHY_INDEX}
+- For new catalog rows, use "add_inventory_product" with productName (required), productNarrative, productSpecs, and includeLatestUserImage true ONLY if the user attached a product image in this message and wants it saved to Inventory.
+- If nothing should be executed, use a single action {"type":"noop"} or an empty actions array.
+- At most ${8} actions. Prefer one update_brand with merged fields over many tiny patches.
+- Do not invent private URLs or API keys.`;
+
+  const contextBlock = `AUTHORITATIVE APP STATE (JSON; refreshed every request):
+Brand profile:
+${JSON.stringify(input.brandProfile)}
+
+Inventory (id + name only):
+${JSON.stringify(input.inventorySummary)}`;
+
+  const trimmedHistory = input.history.slice(-16);
+  type Part =
+    | { text: string }
+    | { inlineData: { mimeType: string; data: string } };
+
+  const contents: { role: "user" | "model"; parts: Part[] }[] = [];
+
+  for (const h of trimmedHistory) {
+    const text = clipAssistantText(h.content, 12_000);
+    if (!text) continue;
+    if (h.role === "user") {
+      contents.push({ role: "user", parts: [{ text }] });
+    } else {
+      contents.push({ role: "model", parts: [{ text }] });
+    }
+  }
+
+  const userParts: Part[] = [
+    {
+      text: `${contextBlock}
+
+---
+User message:
+${clipAssistantText(input.message, 12_000)}`,
+    },
+  ];
+
+  for (const img of (input.images ?? []).slice(0, 3)) {
+    const { mimeType, base64 } = parseDataUrl(img);
+    userParts.push({
+      text: "Attached image(s) for this user turn (product/brand reference):",
+    });
+    userParts.push({ inlineData: { mimeType, data: base64 } });
+  }
+
+  contents.push({ role: "user", parts: userParts });
+
+  const result = await model.generateContent({
+    systemInstruction,
+    contents,
+    generationConfig: {
+      temperature: 0.65,
+      responseMimeType: "application/json",
+      responseSchema: marketingAssistantResponseSchema,
+    },
+  });
+
+  const parsed = parseJson<unknown>(result.response.text());
+  return sanitizeMarketingAssistantResult(
+    parsed,
+    (input.images ?? []).filter(Boolean).length
+  );
 }

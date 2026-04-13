@@ -8,6 +8,7 @@ export {
   generateSocialCaption,
   suggestAdvertisingTaglines,
   suggestBrandProfile,
+  postMarketingAssistant,
   composeCanvasAdjustments,
   toImageDataUrl,
 } from "./client";

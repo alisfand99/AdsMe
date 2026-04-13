@@ -5,6 +5,8 @@ import type {
   ChatTurn,
   ComposeCanvasAdjustmentsResult,
   ExpandedPrompt,
+  MarketingAssistantApiRequest,
+  MarketingAssistantResult,
   ProductAnalysis,
   RefinementResult,
   SocialCaptionPlatform,
@@ -80,6 +82,15 @@ export async function suggestBrandProfile(input: {
   return postJson<SuggestBrandProfileResult>(
     "/api/ai/suggest-brand-profile",
     input
+  );
+}
+
+export async function postMarketingAssistant(
+  body: MarketingAssistantApiRequest
+): Promise<MarketingAssistantResult> {
+  return postJson<MarketingAssistantResult>(
+    "/api/ai/marketing-assistant",
+    body
   );
 }
 

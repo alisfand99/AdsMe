@@ -22,6 +22,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { GlobalMarketingAssistant } from "@/components/assistant/GlobalMarketingAssistant";
 import { SiteHeaderLogo } from "@/components/brand/SiteHeaderLogo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -248,6 +249,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       </div>
+
+      <GlobalMarketingAssistant />
     </div>
   );
 }
