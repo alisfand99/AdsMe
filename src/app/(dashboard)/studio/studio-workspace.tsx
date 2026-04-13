@@ -239,7 +239,8 @@ export function StudioWorkspace({
     }
     if (appliedInventoryRef.current === inventoryProductId) return;
     const p = getProduct(inventoryProductId);
-    const dataUrl = p?.imageDataUrl;
+    const dataUrl =
+      p?.imageDataUrl ?? p?.galleryDataUrls?.find((u) => u?.startsWith("data:image/"));
     if (!p || !dataUrl) return;
     appliedInventoryRef.current = inventoryProductId;
     void (async () => {

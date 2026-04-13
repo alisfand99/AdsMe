@@ -20,6 +20,8 @@ export function InventoryView() {
   const [name, setName] = useState("");
   const [narrative, setNarrative] = useState("");
   const [specs, setSpecs] = useState("");
+  const [sku, setSku] = useState("");
+  const [notes, setNotes] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageHint, setImageHint] = useState<string | null>(null);
 
@@ -56,13 +58,18 @@ export function InventoryView() {
     if (!n) return;
     addProduct({
       name: n,
+      sku: sku.trim(),
       narrative: narrative.trim(),
       specs: specs.trim(),
+      notes: notes.trim(),
       imageDataUrl,
+      galleryDataUrls: [],
     });
     setName("");
+    setSku("");
     setNarrative("");
     setSpecs("");
+    setNotes("");
     setImageDataUrl(null);
     setImageHint(null);
   };
@@ -101,7 +108,17 @@ export function InventoryView() {
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="SKU or display name"
+                placeholder="Display name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                SKU / code
+              </label>
+              <Input
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="Optional internal code"
               />
             </div>
             <div className="space-y-1.5">
@@ -128,7 +145,18 @@ export function InventoryView() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Hero image
+                Notes
+              </label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Pricing, links, channel copy…"
+                className="min-h-[64px] resize-y text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Cover image
               </label>
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" variant="outline" size="sm" asChild>
@@ -175,38 +203,59 @@ export function InventoryView() {
             </div>
           ) : (
             <ul className="space-y-3 pb-20">
-              {products.map((p) => (
-                <li
-                  key={p.id}
-                  className="glass-panel flex gap-4 rounded-xl p-4 transition hover:border-white/15 sm:items-start"
-                >
-                  <div
-                    className={cn(
-                      "h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30",
-                      !p.imageDataUrl && "flex items-center justify-center"
-                    )}
+              {products.map((p) => {
+                const thumb =
+                  p.imageDataUrl ??
+                  p.galleryDataUrls?.find((u) => u?.startsWith("data:image/")) ??
+                  null;
+                const hasAnyImage = Boolean(thumb);
+                return (
+                  <li
+                    key={p.id}
+                    className="glass-panel flex flex-col gap-3 rounded-xl p-4 transition hover:border-white/15 sm:flex-row sm:items-start sm:gap-4"
                   >
-                    {p.imageDataUrl ? (
-                      <Image
-                        src={p.imageDataUrl}
-                        alt=""
-                        width={80}
-                        height={80}
-                        unoptimized
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Package className="h-8 w-8 text-muted-foreground/40" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium leading-tight">{p.name}</p>
-                    {p.narrative ? (
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {p.narrative}
-                      </p>
-                    ) : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 gap-4 rounded-lg text-left outline-none ring-primary/40 transition hover:bg-white/[0.03] focus-visible:ring-2"
+                      onClick={() => setSheetProductId(p.id)}
+                    >
+                      <div
+                        className={cn(
+                          "h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30",
+                          !thumb && "flex items-center justify-center"
+                        )}
+                      >
+                        {thumb ? (
+                          <Image
+                            src={thumb}
+                            alt=""
+                            width={80}
+                            height={80}
+                            unoptimized
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Package className="h-8 w-8 text-muted-foreground/40" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 py-0.5">
+                        <p className="font-medium leading-tight">{p.name}</p>
+                        {p.sku?.trim() ? (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            SKU: {p.sku.trim()}
+                          </p>
+                        ) : null}
+                        {p.narrative ? (
+                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            {p.narrative}
+                          </p>
+                        ) : null}
+                        <p className="mt-2 text-[11px] text-primary/80">
+                          Tap to open details
+                        </p>
+                      </div>
+                    </button>
+                    <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/5 pt-3 sm:flex-col sm:border-t-0 sm:pt-0">
                       <Button
                         type="button"
                         variant="secondary"
@@ -217,15 +266,15 @@ export function InventoryView() {
                         <Pencil className="h-3.5 w-3.5" />
                         Edit
                       </Button>
-                      {p.imageDataUrl ? (
+                      {hasAnyImage ? (
                         <Button variant="default" size="sm" asChild>
                           <Link href={`/studio?inventory=${p.id}`}>
                             Open in Studio
                           </Link>
                         </Button>
                       ) : (
-                        <span className="self-center text-[11px] text-muted-foreground">
-                          Add a hero image in Edit to open in Studio
+                        <span className="self-center text-[11px] text-muted-foreground sm:max-w-[9rem]">
+                          Add a cover or gallery photo to use Studio
                         </span>
                       )}
                       <Button
@@ -239,9 +288,9 @@ export function InventoryView() {
                         Remove
                       </Button>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

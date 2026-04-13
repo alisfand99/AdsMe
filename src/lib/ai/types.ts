@@ -157,9 +157,12 @@ export type MarketingAssistantResult = {
 export type MarketingAssistantInventoryRow = {
   id: string;
   name: string;
+  sku?: string;
   narrative?: string;
   specs?: string;
+  notes?: string;
   hasImage?: boolean;
+  galleryImageCount?: number;
 };
 
 export type MarketingAssistantMarketingSummary = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Package, Pencil, Trash2, X } from "lucide-react";
+import { ImagePlus, Package, Pencil, Star, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -11,7 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-const MAX_IMAGE_CHARS = 2_400_000;
+const MAX_IMAGE_CHARS = 1_200_000;
+const MAX_GALLERY_IMAGES = 8;
+
+type EditableKeys =
+  | "name"
+  | "sku"
+  | "narrative"
+  | "specs"
+  | "notes"
+  | "imageDataUrl"
+  | "galleryDataUrls";
 
 type InventoryProductSheetProps = {
   product: InventoryProduct | null;
@@ -19,9 +29,7 @@ type InventoryProductSheetProps = {
   onClose: () => void;
   onUpdate: (
     id: string,
-    patch: Partial<
-      Pick<InventoryProduct, "name" | "narrative" | "specs" | "imageDataUrl">
-    >
+    patch: Partial<Pick<InventoryProduct, EditableKeys>>
   ) => void;
   onRemoveProduct: (id: string) => void;
 };
@@ -34,18 +42,24 @@ export function InventoryProductSheet({
   onRemoveProduct,
 }: InventoryProductSheetProps) {
   const [name, setName] = useState("");
+  const [sku, setSku] = useState("");
   const [narrative, setNarrative] = useState("");
   const [specs, setSpecs] = useState("");
+  const [notes, setNotes] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [galleryDataUrls, setGalleryDataUrls] = useState<string[]>([]);
   const [imageHint, setImageHint] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     if (!product) return;
     setName(product.name);
+    setSku(product.sku ?? "");
     setNarrative(product.narrative);
     setSpecs(product.specs);
+    setNotes(product.notes ?? "");
     setImageDataUrl(product.imageDataUrl);
+    setGalleryDataUrls(product.galleryDataUrls ?? []);
     setImageHint(null);
     setSavedFlash(false);
   }, [product]);
@@ -68,7 +82,7 @@ export function InventoryProductSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const onImage = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const onCoverImage = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f || !f.type.startsWith("image/")) return;
@@ -85,15 +99,69 @@ export function InventoryProductSheet({
     reader.readAsDataURL(f);
   }, []);
 
+  const onGalleryAdd = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      e.target.value = "";
+      if (!files?.length) return;
+
+      const slice = Array.from(files)
+        .filter((f) => f.type.startsWith("image/"))
+        .slice(0, MAX_GALLERY_IMAGES);
+      let hint: string | null = null;
+      const added: string[] = [];
+      for (const f of slice) {
+        const url = await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const u = String(reader.result);
+            if (u.length > MAX_IMAGE_CHARS) {
+              hint = "Some files were skipped — use smaller images.";
+              resolve(null);
+            } else resolve(u);
+          };
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(f);
+        });
+        if (url) added.push(url);
+      }
+      if (hint) setImageHint(hint);
+      else setImageHint(null);
+      if (added.length) {
+        setGalleryDataUrls((g) => {
+          const room = Math.max(0, MAX_GALLERY_IMAGES - g.length);
+          return [...g, ...added.slice(0, room)];
+        });
+      }
+    },
+    []
+  );
+
+  const removeGalleryAt = useCallback((index: number) => {
+    setGalleryDataUrls((g) => g.filter((_, i) => i !== index));
+  }, []);
+
+  const promoteGalleryToCover = (index: number) => {
+    const url = galleryDataUrls[index];
+    if (!url) return;
+    const rest = galleryDataUrls.filter((_, i) => i !== index);
+    const nextGallery = imageDataUrl ? [imageDataUrl, ...rest] : rest;
+    setImageDataUrl(url);
+    setGalleryDataUrls(nextGallery);
+  };
+
   const onSave = () => {
     if (!product) return;
     const n = name.trim();
     if (!n) return;
     onUpdate(product.id, {
       name: n,
+      sku: sku.trim(),
       narrative: narrative.trim(),
       specs: specs.trim(),
+      notes: notes.trim(),
       imageDataUrl,
+      galleryDataUrls,
     });
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 2000);
@@ -112,6 +180,12 @@ export function InventoryProductSheet({
     onClose();
   };
 
+  const headerThumb = imageDataUrl ?? galleryDataUrls[0] ?? null;
+  const studioReady = Boolean(
+    imageDataUrl ??
+      galleryDataUrls.find((u) => u?.startsWith("data:image/"))
+  );
+
   if (!open || !product) return null;
 
   return (
@@ -129,7 +203,7 @@ export function InventoryProductSheet({
         className={cn(
           "absolute flex w-full flex-col overflow-hidden border border-white/10 bg-zinc-950/98 shadow-2xl backdrop-blur-xl",
           "inset-x-0 bottom-0 max-h-[min(92dvh,900px)] rounded-t-2xl border-b-0",
-          "lg:inset-x-auto lg:bottom-4 lg:left-auto lg:right-4 lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:max-w-md lg:rounded-2xl lg:border-b"
+          "lg:inset-x-auto lg:bottom-4 lg:left-auto lg:right-4 lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:max-w-lg lg:rounded-2xl lg:border-b"
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -140,12 +214,12 @@ export function InventoryProductSheet({
             <div
               className={cn(
                 "flex h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/40",
-                !imageDataUrl && "items-center justify-center"
+                !headerThumb && "items-center justify-center"
               )}
             >
-              {imageDataUrl ? (
+              {headerThumb ? (
                 <Image
-                  src={imageDataUrl}
+                  src={headerThumb}
                   alt=""
                   width={96}
                   height={96}
@@ -161,11 +235,16 @@ export function InventoryProductSheet({
                 id="inventory-product-sheet-title"
                 className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
               >
-                Product
+                Product details
               </p>
               <p className="truncate text-base font-semibold tracking-tight">
                 {name || product.name}
               </p>
+              {sku.trim() ? (
+                <p className="truncate text-xs text-muted-foreground">
+                  SKU: {sku.trim()}
+                </p>
+              ) : null}
             </div>
           </div>
           <Button
@@ -189,7 +268,17 @@ export function InventoryProductSheet({
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Display name or SKU"
+                placeholder="Display name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                SKU / code
+              </label>
+              <Input
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="Optional internal code"
               />
             </div>
             <div className="space-y-1.5">
@@ -214,20 +303,36 @@ export function InventoryProductSheet({
                 className="min-h-[88px] resize-y text-sm"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Hero image
+                Notes
               </label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Pricing, URLs, legal, channel-specific notes…"
+                className="min-h-[88px] resize-y text-sm"
+              />
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <label className="text-xs font-medium text-muted-foreground">
+                Cover image
+              </label>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Used as the main thumbnail and preferred shot in Studio. If empty,
+                the first gallery image is used.
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" variant="outline" size="sm" asChild>
                   <label className="cursor-pointer">
                     <ImagePlus className="h-4 w-4" />
-                    Replace
+                    {imageDataUrl ? "Replace" : "Add cover"}
                     <input
                       type="file"
                       accept="image/*"
                       className="sr-only"
-                      onChange={onImage}
+                      onChange={onCoverImage}
                     />
                   </label>
                 </Button>
@@ -242,14 +347,98 @@ export function InventoryProductSheet({
                       setImageHint(null);
                     }}
                   >
-                    Remove image
+                    Remove cover
                   </Button>
                 ) : null}
               </div>
-              {imageHint ? (
-                <p className="text-xs text-amber-400/90">{imageHint}</p>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Reference gallery
+                </label>
+                <span className="text-[11px] text-muted-foreground">
+                  {galleryDataUrls.length}/{MAX_GALLERY_IMAGES}
+                </span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Add several angles or pack shots. Use the star on a thumbnail to
+                make it the cover.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  disabled={galleryDataUrls.length >= MAX_GALLERY_IMAGES}
+                >
+                  <label
+                    className={cn(
+                      "cursor-pointer",
+                      galleryDataUrls.length >= MAX_GALLERY_IMAGES &&
+                        "pointer-events-none opacity-50"
+                    )}
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    Add photos
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={onGalleryAdd}
+                    />
+                  </label>
+                </Button>
+              </div>
+              {galleryDataUrls.length ? (
+                <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {galleryDataUrls.map((url, index) => (
+                    <li
+                      key={`${index}-${url.slice(0, 24)}`}
+                      className="group relative aspect-square overflow-hidden rounded-lg border border-white/10 bg-black/40"
+                    >
+                      <Image
+                        src={url}
+                        alt=""
+                        fill
+                        unoptimized
+                        className="object-cover"
+                        sizes="120px"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 flex gap-0.5 bg-gradient-to-t from-black/80 to-transparent p-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="secondary"
+                          className="h-7 w-7 shrink-0"
+                          title="Set as cover"
+                          onClick={() => promoteGalleryToCover(index)}
+                        >
+                          <Star className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="secondary"
+                          className="h-7 w-7 shrink-0 text-destructive"
+                          title="Remove"
+                          onClick={() => removeGalleryAt(index)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </div>
+
+            {imageHint ? (
+              <p className="text-xs text-amber-400/90">{imageHint}</p>
+            ) : null}
           </div>
         </div>
 
@@ -270,7 +459,7 @@ export function InventoryProductSheet({
               Save changes
             </Button>
             <div className="flex flex-col gap-2 sm:flex-row">
-              {imageDataUrl ? (
+              {studioReady ? (
                 <Button
                   variant="secondary"
                   size="sm"

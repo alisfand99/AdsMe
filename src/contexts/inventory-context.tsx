@@ -15,10 +15,16 @@ const STORAGE_KEY = "heroframe-inventory-products-v1";
 export type InventoryProduct = {
   id: string;
   name: string;
+  /** Optional SKU or internal code */
+  sku: string;
   narrative: string;
   specs: string;
-  /** Optional primary image as data URL (keep small for localStorage). */
+  /** Long-form notes: pricing hints, variants, links… */
+  notes: string;
+  /** Optional primary / cover image (Studio & list thumbnail prefer this). */
   imageDataUrl: string | null;
+  /** Additional reference shots (data URLs; keep files reasonably small). */
+  galleryDataUrls: string[];
   createdAt: number;
 };
 
@@ -46,13 +52,23 @@ function load(): InventoryProduct[] {
         const id = typeof r.id === "string" ? r.id : "";
         const name = typeof r.name === "string" ? r.name : "";
         if (!id || !name) return null;
+        const galleryRaw = r.galleryDataUrls;
+        const galleryDataUrls =
+          Array.isArray(galleryRaw) && galleryRaw.length
+            ? galleryRaw.filter(
+                (u): u is string => typeof u === "string" && u.startsWith("data:image/")
+              )
+            : [];
         return {
           id,
           name,
+          sku: typeof r.sku === "string" ? r.sku : "",
           narrative: typeof r.narrative === "string" ? r.narrative : "",
           specs: typeof r.specs === "string" ? r.specs : "",
+          notes: typeof r.notes === "string" ? r.notes : "",
           imageDataUrl:
             typeof r.imageDataUrl === "string" ? r.imageDataUrl : null,
+          galleryDataUrls,
           createdAt:
             typeof r.createdAt === "number" ? r.createdAt : Date.now(),
         } satisfies InventoryProduct;

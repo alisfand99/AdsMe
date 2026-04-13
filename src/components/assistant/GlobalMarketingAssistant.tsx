@@ -61,17 +61,23 @@ function applyAllActions(
     patchProfile: (p: Partial<BrandProfile>) => void;
     addProduct: (p: {
       name: string;
+      sku: string;
       narrative: string;
       specs: string;
+      notes: string;
       imageDataUrl: string | null;
+      galleryDataUrls: string[];
     }) => void;
     updateProduct: (
       id: string,
       patch: Partial<{
         name: string;
+        sku: string;
         narrative: string;
         specs: string;
+        notes: string;
         imageDataUrl: string | null;
+        galleryDataUrls: string[];
       }>
     ) => void;
     removeProduct: (id: string) => void;
@@ -94,9 +100,12 @@ function applyAllActions(
           : null;
       ctx.addProduct({
         name: a.name,
+        sku: "",
         narrative: a.narrative,
         specs: a.specs,
+        notes: "",
         imageDataUrl: img,
+        galleryDataUrls: [],
       });
       lines.push(`Added inventory: ${a.name}`);
     } else if (a.type === "update_inventory_product") {
@@ -105,6 +114,9 @@ function applyAllActions(
         narrative: string;
         specs: string;
         imageDataUrl: string | null;
+        sku: string;
+        notes: string;
+        galleryDataUrls: string[];
       }> = {};
       if (a.name !== undefined) patch.name = a.name;
       if (a.narrative !== undefined) patch.narrative = a.narrative;
@@ -262,9 +274,14 @@ export function GlobalMarketingAssistant() {
         inventorySummary: products.map((p) => ({
           id: p.id,
           name: p.name,
+          sku: p.sku?.trim() || undefined,
           narrative: clip(p.narrative, 4000),
           specs: clip(p.specs, 4000),
-          hasImage: Boolean(p.imageDataUrl),
+          notes: p.notes?.trim() ? clip(p.notes, 2000) : undefined,
+          hasImage: Boolean(
+            p.imageDataUrl || (p.galleryDataUrls && p.galleryDataUrls.length > 0)
+          ),
+          galleryImageCount: p.galleryDataUrls?.length ?? 0,
         })),
         marketingSummary: {
           posts: posts.map((p) => ({
